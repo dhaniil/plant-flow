@@ -1,0 +1,10 @@
+
+.bottom-nav-active {
+  @apply text-green-500 bg-white rounded-full duration-300 shadow-inner shadow-green-300;
+}
+
+
+.bottom-nav-active i {
+  @apply text-green-500 transition-all duration-300;
+}
+
