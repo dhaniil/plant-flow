@@ -17,17 +17,7 @@ app.use(
     })
   );
 
-// Routes
-app.get("/api/plants", async (req, res) => {
-  const plants = await read();
-  res.json(plants);
-});
 
-app.post("/api/plants", async (req, res) => {
-  const { name, type, location } = req.body;
-  await create({ name, type, location });
-  res.json({ message: "Tumbuhan berhasil di tambahkan" });
-});
 
 // Start server
 app.listen(PORT, () => {

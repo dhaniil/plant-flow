@@ -3,9 +3,9 @@ import React from 'react';
 function App() {
   return (
     <div className="flex w-full h-screen bg-green-100">
-      <h1 className="font-varela text-3xl font-bold text-black p-5">Dashboard</h1>
+      <h1 className="font-varela text-3xl font-bold text-black p-5 animate-fade-in-fast">Dashboard</h1>
 
-      <div className='containe flex flex-col mx-auto'>
+      <div className='containe flex flex-col mx-auto '>
         <div className='flex flex-row gap-4'>
 
         </div>
