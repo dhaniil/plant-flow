@@ -13,7 +13,7 @@ const Devices: React.FC = () => {
       deviceId: "esp-001",
       mqttTopic: "hydro/pump/north",
       schedule: ["07:00", "19:00"],
-      isOnline: true,
+      isOnline: false,
     },
     {
       name: "Lampu Taman",
@@ -29,14 +29,15 @@ const Devices: React.FC = () => {
       <h2>Devices</h2>
       {devices.map((device) => (
         <DeviceCard
-          key={device.deviceId}
-          name={device.name}
-          deviceId={device.deviceId}
-          mqttTopic={device.mqttTopic}
-          jadwal={device.schedule}
-          status={device.isOnline}
-          pesan={publishMessage}
-        />
+              key={device.deviceId}
+              name={device.name}
+              deviceId={device.deviceId}
+              mqttTopic={device.mqttTopic}
+              schedule={device.schedule}
+              isOnline={device.isOnline}
+              publishMessage={publishMessage} onUpdate={function (updatedDevice: { name: string; mqttTopic: string; schedule: string[]; }): void {
+                  throw new Error("Function not implemented.");
+              } }        />
       ))}
     </div>
   );
