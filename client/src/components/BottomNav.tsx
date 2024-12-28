@@ -1,7 +1,8 @@
-import React, { FC } from 'react';
+
 import { NavLink } from 'react-router-dom';
 import 'remixicon/fonts/remixicon.css';
 import '../App.css';
+import React from 'react';
 
 
 
