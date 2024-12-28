@@ -23,7 +23,7 @@ const Graphs: React.FC = () => {
   useEffect(() => {
     const fetchCharts = async () => {
       try {
-        const response = await axios.get(`${BACKEND_URL}/api/charts`);
+        const response = await axios.get(`${BACKEND_URL}/api/chart`);
         setCharts(response.data);
       } catch (error) {
         console.error('Error fetching charts:', error);
@@ -118,15 +118,16 @@ const Graphs: React.FC = () => {
 
       {/* Daftar Charts */}
       {Array.isArray(charts) &&
-        charts.map((chart) => (
-          <LineChart
-            key={chart.id}
-            id={chart.id}
-            name={chart.name}
-            topic={chart.topic}
-            onUpdate={handleUpdate}
-          />
-        ))}
+  charts.map((chart) => (
+    <LineChart
+      key={chart.id} // Tambahkan properti "key"
+      id={chart.id}
+      name={chart.name}
+      topic={chart.topic}
+      onUpdate={handleUpdate}
+    />
+  ))}
+
     </div>
   );
 };

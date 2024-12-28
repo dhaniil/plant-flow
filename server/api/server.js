@@ -181,7 +181,7 @@ app.put("/api/chart/:id", async (req, res) => {
 
   
 
-  app.post('subscribe', (req, res) => {
+app.post('subscribe', (req, res) => {
     const { mqtt_topic } = req.body;
     if (!mqtt_topic) {
         return res.status(400).json({ message: 'Topic diperlukan' });
