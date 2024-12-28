@@ -1,6 +1,7 @@
 // src/components/Device.tsx
 import React, { useState, useEffect } from "react";
 import DeviceComponent from "../components/DeviceComponent";
+import AddDeviceButton from "../components/AddDeviceButton";
 
 interface Device {
     _id: string;
@@ -13,7 +14,7 @@ interface Device {
 const Device: React.FC = () => {
     const [devices, setDevices] = useState<Device[]>([]);
 
-    // Mengambil data devices dari API
+    // Fetch devices from the backend API
     useEffect(() => {
         const fetchDevices = async () => {
             try {
@@ -28,6 +29,7 @@ const Device: React.FC = () => {
         fetchDevices();
     }, []);
 
+    // Update device details
     const handleUpdateDevice = async (deviceId: string, updatedData: { name: string; status: string; mqtt_topic: string }) => {
         try {
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/devices/${deviceId}`, {
@@ -53,6 +55,7 @@ const Device: React.FC = () => {
         }
     };
 
+    // Delete device
     const handleDeleteDevice = async (deviceId: string) => {
         try {
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/devices/${deviceId}`, {
@@ -69,24 +72,51 @@ const Device: React.FC = () => {
         }
     };
 
+    // Add device handler
+    const handleAddDevice = async (newDevice: { name: string; mqtt_topic: string; status: string }) => {
+        try {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/devices`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(newDevice),
+            });
+
+            if (response.ok) {
+                const addedDevice = await response.json();
+                setDevices((prevDevices) => [...prevDevices, addedDevice]);
+            } else {
+                console.error("Failed to add device");
+            }
+        } catch (error) {
+            console.error("Error adding device:", error);
+        }
+    };
+
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-            {devices.length === 0 ? (
-                <p>No devices available</p>
-            ) : (
-                devices.map((device) => (
-                    <DeviceComponent
-                        key={device._id}
-                        deviceId={device._id}
-                        device_id={device.device_id}
-                        name={device.name}
-                        status={device.status}
-                        mqtt_topic={device.mqtt_topic}
-                        onUpdate={handleUpdateDevice}
-                        onDelete={handleDeleteDevice}
-                    />
-                ))
-            )}
+        <div>
+            {/* Add Device Button */}
+            <AddDeviceButton onAddDevice={handleAddDevice} />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 mt-4">
+                {devices.length === 0 ? (
+                    <p>No devices available</p>
+                ) : (
+                    devices.map((device) => (
+                        <DeviceComponent
+                            key={device._id}
+                            deviceId={device._id}
+                            device_id={device.device_id}
+                            name={device.name}
+                            status={device.status}
+                            mqtt_topic={device.mqtt_topic}
+                            onUpdate={handleUpdateDevice}
+                            onDelete={handleDeleteDevice}
+                        />
+                    ))
+                )}
+            </div>
         </div>
     );
 };

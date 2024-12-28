@@ -12,9 +12,7 @@ import {
   Legend,
 } from 'chart.js';
 
-
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
-
 
 interface LineChartProps {
   id: string;
@@ -33,6 +31,23 @@ const LineChart: React.FC<LineChartProps> = ({ id, name, topic, onUpdate }) => {
   const [labels, setLabels] = useState<string[]>([]);
 
   useEffect(() => {
+    // Fetch initial data from the backend with the full URL including the endpoint
+    const fetchData = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/chart`);
+        const result = await response.json();
+        // Assuming your API returns initial data for the chart, adjust if necessary
+        if (result.data && result.labels) {
+          setData(result.data);
+          setLabels(result.labels);
+        }
+      } catch (error) {
+        console.error('Error fetching data from the backend:', error);
+      }
+    };
+
+    fetchData();
+
     const client = mqtt.connect(MQTT_BROKER_URL);
 
     client.on('connect', () => {
@@ -104,30 +119,30 @@ const LineChart: React.FC<LineChartProps> = ({ id, name, topic, onUpdate }) => {
         )}
       </div>
       <div className="bg-white shadow rounded-lg p-4 mb-4" style={{ height: '400px', width: '100%' }}>
-  <Line
-    data={{
-      labels: labels,
-      datasets: [
-        {
-          label: 'Sensor Value',
-          data: data,
-          borderColor: 'rgba(75, 192, 192, 1)',
-          backgroundColor: 'rgba(75, 192, 192, 0.2)',
-        },
-      ],
-    }}
-    options={{
-      responsive: true,
-      maintainAspectRatio: false, // Pastikan ini false untuk menggunakan ukuran container
-      plugins: {
-        legend: {
-          display: true,
-          position: 'top',
-        },
-      },
-    }}
-  />
-</div>
+        <Line
+          data={{
+            labels: labels,
+            datasets: [
+              {
+                label: 'Sensor Value',
+                data: data,
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+              },
+            ],
+          }}
+          options={{
+            responsive: true,
+            maintainAspectRatio: false, // Pastikan ini false untuk menggunakan ukuran container
+            plugins: {
+              legend: {
+                display: true,
+                position: 'top',
+              },
+            },
+          }}
+        />
+      </div>
     </div>
   );
 };

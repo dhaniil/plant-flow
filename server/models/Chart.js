@@ -10,3 +10,4 @@ const chartSchema = new mongoose.Schema({
 const Chart = mongoose.model('Chart', chartSchema);
 
 module.exports = Chart;
+  
