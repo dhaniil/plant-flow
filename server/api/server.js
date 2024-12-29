@@ -7,6 +7,9 @@
     import Chart from '../models/Chart.js';
     import Device from '../models/Device.js';
     import { MongoClient, ObjectId } from 'mongodb';
+    import adminRoutes from './admin.js';
+
+
 
     dotenv.config();
 
@@ -24,6 +27,9 @@
         allowedHeaders: ['Content-Type', 'Authorization'],
         })
     );
+    app.use(express.json());
+    app.use('/admin', adminRoutes);
+
     app.use(bodyParser.json()); 
     let db;
 

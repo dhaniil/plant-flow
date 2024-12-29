@@ -24,9 +24,15 @@ const BottomNav = () => {
             <i className="text-white ri-computer-line text-2xl"></i>
 
         </NavLink>
-        <div className="flex w-14 h-14 items-center justify-center logo rounded-full item bg-white text-green-400 p-2 border-2 absolute border-green-400 -mt-6 mx overflow-hidden ">
-
+        <div  className="flex w-14 h-14 items-center justify-center logo rounded-full item bg-white text-green-400 p-2 border-2 absolute border-green-400 -mt-6 mx overflow-hidden ">
+        <NavLink
+          to="/login"
+          className="p-2 bottom-nav flex flex-col items-center"
+        >
           <i className="ri-leaf-line"></i>
+        </NavLink>
+
+
         </div>
         <div className="lg:mx-6 mx-4"></div>
         <NavLink
