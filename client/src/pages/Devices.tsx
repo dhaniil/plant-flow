@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import DeviceComponent from "../components/DeviceComponent";
 import AddDeviceButton from "../components/AddDeviceButton";
 
+
 interface Device {
     _id: string;
     device_id: string;
@@ -39,12 +40,14 @@ const Device: React.FC = () => {
                 },
                 body: JSON.stringify(updatedData),
             });
-
+    
             if (response.ok) {
                 const updatedDevice = await response.json();
+    
+                // Perbarui state secara lokal
                 setDevices((prevDevices) =>
                     prevDevices.map((device) =>
-                        device._id === deviceId ? { ...device, ...updatedDevice } : device
+                        device._id === deviceId ? { ...device, ...updatedData } : device
                     )
                 );
             } else {
@@ -54,6 +57,7 @@ const Device: React.FC = () => {
             console.error("Error updating device:", error);
         }
     };
+    
 
     // Delete device
     const handleDeleteDevice = async (deviceId: string) => {
@@ -103,9 +107,9 @@ const Device: React.FC = () => {
                 {devices.length === 0 ? (
                     <p>No devices available</p>
                 ) : (
-                    devices.map((device) => (
+                    devices.map((device, index) => (
                         <DeviceComponent
-                            key={device._id}
+                            key={device._id || index}
                             deviceId={device._id}
                             device_id={device.device_id}
                             name={device.name}

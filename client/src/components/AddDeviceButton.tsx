@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useState } from "react";
+import axios from "axios";
 
 interface AddDeviceButtonProps {
   onAddDevice: (device: { id: string; name: string; topic: string; status: boolean }) => void;
@@ -7,40 +7,42 @@ interface AddDeviceButtonProps {
 
 const AddDeviceButton: React.FC<AddDeviceButtonProps> = ({ onAddDevice }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [deviceId, setDeviceId] = useState('');
-  const [deviceName, setDeviceName] = useState('');
-  const [mqttTopic, setMqttTopic] = useState('');
+  const [deviceId, setDeviceId] = useState("");
+  const [deviceName, setDeviceName] = useState("");
+  const [mqttTopic, setMqttTopic] = useState("");
   const [status, setStatus] = useState(false);
 
-  // Handle device submission and API call
   const handleSubmit = async () => {
     try {
       const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/devices`, {
-        id: deviceId,
+        device_id: deviceId, // Use the keys expected by your backend
         name: deviceName,
-        topic: mqttTopic,
+        mqtt_topic: mqttTopic,
         status: status,
       });
 
-      if (response.status === 200) {
+      if (response.status === 200 || response.status === 201) {
         onAddDevice({
-          id: deviceId,
+          id: response.data.id || deviceId, // Use response data if available
           name: deviceName,
           topic: mqttTopic,
           status: status,
         });
-        setIsModalOpen(false); // Close modal after successful submission
+        setIsModalOpen(false); // Close modal
       } else {
-        console.error('Error: Device not added');
+        console.error("Error: Device not added");
       }
     } catch (error) {
-      console.error('Error adding device:', error);
+      if (axios.isAxiosError(error)) {
+        console.error("Axios error:", error.response?.data || error.message);
+      } else {
+        console.error("Unexpected error:", error);
+      }
     }
   };
 
   return (
     <>
-      {/* Add Device Button */}
       <button
         onClick={() => setIsModalOpen(true)}
         className="bg-blue-500 text-white px-4 py-2 rounded"
@@ -48,7 +50,6 @@ const AddDeviceButton: React.FC<AddDeviceButtonProps> = ({ onAddDevice }) => {
         Add Device
       </button>
 
-      {/* Modal Popup */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-96">
