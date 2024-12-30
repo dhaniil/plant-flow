@@ -5,7 +5,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import HydroponicDashboard from './App';
 import Device from './pages/Devices';
 import Graphs from './pages/Graphs';
-import Settings from './pages/Settings';
 import BottomNav from './components/BottomNav';
 import GrowthTimelapse from './pages/GrowthTimelapse';
 import Login from './pages/Login';
@@ -23,7 +22,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/" element={<HydroponicDashboard />} />
           <Route path="/devices" element={<Device />} />
           <Route path="/graphs" element={<Graphs />} />
-          <Route path="/settings" element={<Settings />} />
+
           <Route path="/login" element={<Login />} />
         </Routes>
         <BottomNav/>

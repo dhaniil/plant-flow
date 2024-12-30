@@ -22,11 +22,13 @@
 
     app.use(
         cors({
-        origin: ['http://localhost:4000', 'https://server-plant-flow.vercel.app/api/devices'],
+        origin: ['https://plant-flow.vercel.app'],
         methods: ['GET', 'POST', 'PUT', 'DELETE'],
         allowedHeaders: ['Content-Type', 'Authorization'],
         })
     );
+    app.options('*', cors());
+
     app.use(express.json());
     app.use('/admin', adminRoutes);
 
