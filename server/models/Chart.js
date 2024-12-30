@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 // Definisikan skema Chart
 const chartSchema = new mongoose.Schema({
@@ -9,5 +9,5 @@ const chartSchema = new mongoose.Schema({
 // Buat model Chart
 const Chart = mongoose.model('Chart', chartSchema);
 
-module.exports = Chart;
+export default Chart;
   

@@ -29,37 +29,62 @@ const DeviceComponent: React.FC<DeviceProps> = ({ deviceId, device_id, name, sta
     };
 
     return (
-        <div className="bg-white p-4 rounded-lg shadow-lg max-w-xs w-full">
+        <div className="backdrop-blur-sm bg-white/30 p-6 rounded-xl shadow-lg max-w-xs w-full border border-white/20 hover:bg-white/40 transition-all duration-300">
             {editing ? (
-                <>
-                    <input
-                        className="w-full p-2 border mb-2 rounded"
-                        type="text"
-                        value={editedName}
-                        onChange={(e) => setEditedName(e.target.value)}
-                    />
-                    <input
-                        className="w-full p-2 border mb-2 rounded"
-                        type="text"
-                        value={editedStatus}
-                        onChange={(e) => setEditedStatus(e.target.value)}
-                    />
-                    <input
-                        className="w-full p-2 border mb-2 rounded"
-                        type="text"
-                        value={editedMqttTopic}
-                        onChange={(e) => setEditedMqttTopic(e.target.value)}
-                    />
-                    <button onClick={handleSaveClick} className="bg-blue-500 text-white p-2 rounded w-full mt-2">Save</button>
-                </>
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700">Nama Perangkat</label>
+                        <input
+                            className="w-full p-2.5 bg-white/50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                            type="text"
+                            value={editedName}
+                            onChange={(e) => setEditedName(e.target.value)}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700">Status</label>
+                        <input
+                            className="w-full p-2.5 bg-white/50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                            type="text"
+                            value={editedStatus}
+                            onChange={(e) => setEditedStatus(e.target.value)}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700">MQTT Topic</label>
+                        <input
+                            className="w-full p-2.5 bg-white/50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                            type="text"
+                            value={editedMqttTopic}
+                            onChange={(e) => setEditedMqttTopic(e.target.value)}
+                        />
+                    </div>
+                    <button 
+                        onClick={handleSaveClick} 
+                        className="w-full bg-green-500 hover:bg-green-600 text-white font-medium py-2.5 rounded-lg transition-colors duration-200"
+                    >
+                        Simpan
+                    </button>
+                </div>
             ) : (
                 <>
-                    <h3 className="font-bold text-xl">{device_id} - {name}</h3>
-                    <p>Status: {status}</p>
-                    <p>MQTT Topic: {mqtt_topic}</p>
-                    <div className="flex gap-2 mt-4">
-                        <button onClick={handleEditClick} className="bg-yellow-500 text-white p-2 rounded w-full">Edit</button>
-                        <button onClick={handleDeleteClick} className="bg-red-500 text-white p-2 rounded w-full">Delete</button>
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 className="font-bold text-xl text-gray-800">{device_id}</h3>
+                            <p className="text-gray-600 font-medium">{name}</p>
+                        </div>
+                        <div className="flex gap-3">
+                            <button onClick={handleEditClick} className="text-gray-600 hover:text-green-500 transition-colors">
+                                <i className="ri-edit-line text-xl"></i>
+                            </button>
+                            <button onClick={handleDeleteClick} className="text-gray-600 hover:text-red-500 transition-colors">
+                                <i className="ri-delete-bin-line text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <p className="text-gray-700">Status: <span className="font-medium">{status}</span></p>
+                        <p className="text-gray-700">MQTT Topic: <span className="font-medium">{mqtt_topic}</span></p>
                     </div>
                 </>
             )}

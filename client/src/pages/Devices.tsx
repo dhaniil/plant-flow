@@ -99,7 +99,7 @@ const Device: React.FC = () => {
     };
 
     return (
-        <div>
+        <div className="bg-green-100 h-screen">
             {/* Add Device Button */}
             <AddDeviceButton onAddDevice={handleAddDevice} />
 

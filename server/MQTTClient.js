@@ -1,4 +1,4 @@
-const mqtt = require('mqtt');
+import mqtt from 'mqtt';
 
 class MQTTClient {
   constructor() {
@@ -75,4 +75,4 @@ class MQTTClient {
   }
 }
 
-module.exports = MQTTClient;
+export default MQTTClient;

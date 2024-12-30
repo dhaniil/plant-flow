@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useAdmin } from "../../context/AdminContext";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { LogOut } from "lucide-react";
 
 const AdminLogin: React.FC = () => {
   const { isAdmin, setAdmin, logout } = useAdmin();  // Added isAdmin and logout
@@ -76,13 +77,8 @@ const AdminLogin: React.FC = () => {
           </>
         ) : (
           <div className="flex justify-between items-center">
-            <p className="text-lg font-medium">Welcome, {username}</p>
-            <button
-              onClick={handleLogout}
-              className="bg-red-500 text-white px-4 py-2 rounded"
-            >
-              Logout
-            </button>
+            <p className="text-lg font-medium">Welcome, Admin</p>
+            <LogOut onClick={handleLogout} />
           </div>
         )}
       </div>
