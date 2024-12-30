@@ -15,13 +15,18 @@ const AdminLogin: React.FC = () => {
     e.preventDefault();
 
     try {
-      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/admin/login`, {
-        username,
-        password,
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/admin/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password })
       });
 
-      if (response.data.success) {
-        const token = response.data.token;
+      const data = await response.json();
+
+      if (data.success) {
+        const token = data.token;
         setAdmin(true, username, token); // Set status admin and token
         navigate("/"); // Navigate to the main page
       } else {
