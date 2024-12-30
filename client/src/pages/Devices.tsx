@@ -16,17 +16,18 @@ const Device: React.FC = () => {
     const [devices, setDevices] = useState<Device[]>([]);
 
     // Fetch devices from the backend API
-    useEffect(() => {
-        const fetchDevices = async () => {
-            try {
-                const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/devices`);
-                const data = await response.json();
-                setDevices(data);
-            } catch (error) {
-                console.error("Error fetching devices:", error);
-            }
-        };
+    const fetchDevices = async () => {
+        try {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/devices`);
+            const data = await response.json();
+            setDevices(data);
+        } catch (error) {
+            console.error("Error fetching devices:", error);
+        }
+    };
 
+    // Pindahkan useEffect ke luar
+    useEffect(() => {
         fetchDevices();
     }, []);
 
@@ -77,19 +78,28 @@ const Device: React.FC = () => {
     };
 
     // Add device handler
-    const handleAddDevice = async (newDevice: { name: string; mqtt_topic: string; status: string }) => {
+    const handleAddDevice = async (device: { 
+        name: string; 
+        topic: string;
+        status: boolean
+    }) => {
         try {
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/devices`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(newDevice),
+                body: JSON.stringify({
+                    device_id: device.name.toLowerCase().replace(/\s+/g, '-'), // generate device_id
+                    name: device.name,
+                    mqtt_topic: device.topic,
+                    status: String(device.status)
+                }),
             });
 
             if (response.ok) {
-                const addedDevice = await response.json();
-                setDevices((prevDevices) => [...prevDevices, addedDevice]);
+                // Setelah berhasil menambah, langsung fetch data terbaru
+                await fetchDevices();
             } else {
                 console.error("Failed to add device");
             }

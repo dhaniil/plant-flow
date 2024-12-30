@@ -10,12 +10,14 @@ import BottomNav from './components/BottomNav';
 import GrowthTimelapse from './pages/GrowthTimelapse';
 import Login from './pages/Login';
 import { AdminProvider } from '../context/AdminContext'; // Import AdminProvider
+import Header from './components/Header';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {/* Wrap the Router with AdminProvider */}
     <AdminProvider>
       <Router>
+        <Header />
         <Routes>
           <Route path="/timelapse" element={<GrowthTimelapse />} />
           <Route path="/" element={<HydroponicDashboard />} />
@@ -24,7 +26,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/settings" element={<Settings />} />
           <Route path="/login" element={<Login />} />
         </Routes>
-        <BottomNav />
+        <BottomNav/>
       </Router>
     </AdminProvider>
   </StrictMode>

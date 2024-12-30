@@ -3,6 +3,7 @@ import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 import { Menu, Bell, Droplet, Thermometer, Wind, TreesIcon as Plant, LogOut } from 'lucide-react'; // Import LogOut icon
 import { useAdmin } from '../context/AdminContext';
+import Header from './components/Header';
 
 ChartJS.register(
   CategoryScale,
@@ -60,23 +61,8 @@ export default function HydroponicDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-green-100">
-      {/* Header */}
-      <header className="bg-green-500 text-white shadow-lg">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Hydroponic Monitor</h1>
-          <div className="flex items-center space-x-4">
-            {/* Check if the user is logged in */}
-            {isAdmin && (
-              <LogOut
-                onClick={handleLogout}  // Call the logout function on click
-                className="text-white cursor-pointer"
-                size={24}  // You can adjust the size of the icon
-              />
-            )}
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-green-100 font-Poppins">
+
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">

@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-export default {
+module.exports = {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -75,17 +75,8 @@ export default {
 
       },
       fontFamily: {
-        varela: ['Varela Round', 'sans-serif'],
-        sans: [
-          '"Inter"',
-          "ui-sans-serif",
-          "system-ui",
-          "sans-serif",
-          '"Apple Color Emoji"',
-          '"Segoe UI Emoji"',
-          '"Segoe UI Symbol"',
-          '"Noto Color Emoji"',
-        ],
+        Sour: ['Sour Gummy', 'cursive'],
+        Poppins: ['Poppins', 'sans-serif'],
       },
     },
 

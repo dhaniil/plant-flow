@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { Plus } from "lucide-react";
 
 interface AddDeviceButtonProps {
   onAddDevice: (device: { id: string; name: string; topic: string; status: boolean }) => void;
@@ -12,42 +13,31 @@ const AddDeviceButton: React.FC<AddDeviceButtonProps> = ({ onAddDevice }) => {
   const [mqttTopic, setMqttTopic] = useState("");
   const [status, setStatus] = useState(false);
 
-  const handleSubmit = async () => {
-    try {
-      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/devices`, {
-        device_id: deviceId, // Use the keys expected by your backend
-        name: deviceName,
-        mqtt_topic: mqttTopic,
-        status: status,
-      });
-
-      if (response.status === 200 || response.status === 201) {
-        onAddDevice({
-          id: response.data.id || deviceId, // Use response data if available
-          name: deviceName,
-          topic: mqttTopic,
-          status: status,
-        });
-        setIsModalOpen(false); // Close modal
-      } else {
-        console.error("Error: Device not added");
-      }
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error("Axios error:", error.response?.data || error.message);
-      } else {
-        console.error("Unexpected error:", error);
-      }
-    }
+  const handleSubmit = () => {
+    const newDevice = {
+      id: deviceId,
+      name: deviceName,
+      topic: mqttTopic,
+      status: status
+    };
+    
+    onAddDevice(newDevice);
+    
+    setDeviceId("");
+    setDeviceName("");
+    setMqttTopic("");
+    setStatus(false);
+    setIsModalOpen(false);
   };
 
   return (
     <>
       <button
         onClick={() => setIsModalOpen(true)}
-        className="bg-blue-500 text-white px-4 py-2 rounded"
+        className=" flex flex-row items-center gap-2 text-poppins bg-green-500 text-white px-4 py-2 rounded"
       >
-        Add Device
+        <Plus />
+        Tambah Perangkat
       </button>
 
       {isModalOpen && (
