@@ -34,14 +34,17 @@ const AddDeviceButton: React.FC<AddDeviceButtonProps> = ({ onAddDevice }) => {
     <>
       <button
         onClick={() => setIsModalOpen(true)}
-        className=" flex flex-row items-center gap-2 text-poppins bg-green-500 text-white px-4 py-2 rounded"
+        className="fixed bottom-16 right-2 w-14 h-14 bg-green-500 text-white rounded-full 
+          shadow-lg hover:bg-green-600 transition-all duration-300 
+          flex items-center justify-center z-40
+          hover:scale-110 active:scale-95
+          hover:shadow-green-500/50"
       >
-        <Plus />
-        Tambah Perangkat
+        <Plus size={24} />
       </button>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-96">
             <h2 className="text-xl font-bold mb-4">Add New Device</h2>
             <form>
