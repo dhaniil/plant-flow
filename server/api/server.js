@@ -8,6 +8,7 @@ import Device from '../models/Device.js';
 import { MongoClient, ObjectId } from 'mongodb';
 import adminRoutes from './admin.js';
 import nutrientRouter from './nutrientStats.js';
+import datasensorRouter from './datasensor.js';
 
 dotenv.config();
 
@@ -50,6 +51,7 @@ const connectDatabase = async () => {
   }
 };
 
+//LOG
 app.use(async (req, res, next) => {
   try {
     await connectDatabase();
@@ -60,9 +62,20 @@ app.use(async (req, res, next) => {
   }
 });
 
+
+
 const getCollection = (collectionName) => {
   return db.collection(collectionName);
 };
+
+
+//LOG API REQUEST
+app.use((req,res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  console.log('Method:', req.method);
+  console.log('Path:', req.path);
+  next();
+});
 
 // POST route untuk menambahkan device
 app.post("/api/devices", async (req, res) => {
@@ -203,10 +216,14 @@ app.use((req, res) => {
   });
 });
 
+app.use('/api/datasensor', datasensorRouter);
+
+
+
 // Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
 export default app;
+

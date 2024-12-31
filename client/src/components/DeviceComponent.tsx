@@ -38,6 +38,7 @@ const DeviceComponent: React.FC<DeviceProps> = ({ deviceId, device_id, name, sta
 
     const handleDeleteClick = () => {
         onDelete(deviceId);
+        
     };
 
     return (

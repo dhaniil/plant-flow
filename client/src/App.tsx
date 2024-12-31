@@ -77,13 +77,16 @@ export default function HydroponicDashboard() {
   // Update MQTT setup
   const MQTT_BROKER_URL = 'wss://broker.hivemq.com:8884/mqtt';
 
+  // Tambahkan state untuk topic dan edit mode
+  const [sensorTopic, setSensorTopic] = useState('');
+  const [isEditingTopic, setIsEditingTopic] = useState(false);
+
   useEffect(() => {
     const client = mqtt.connect(MQTT_BROKER_URL);
     
     client.on('connect', () => {
       console.log('Connected to MQTT broker');
       nutrients.forEach(nutrient => {
-        console.log(`Subscribing to topic: ${nutrient.topic}`);
         client.subscribe(nutrient.topic);
       });
     });
@@ -167,124 +170,266 @@ export default function HydroponicDashboard() {
     fetchNutrientTopics();
   }, []);
 
+  // Tambahkan fungsi untuk mengambil topic
+  const fetchSensorTopic = async () => {
+    try {
+      console.log('Fetching sensor topic...');
+      const response = await fetch('http://localhost:3000/api/datasensor/topic');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log('Received data:', data);
+      setSensorTopic(data.sensor.topic);
+    } catch (error) {
+      console.error('Gagal mengambil topic:', error);
+    }
+  };
+
+  // Tambahkan fungsi untuk update topic
+  const updateSensorTopic = async (newTopic: string) => {
+    try {
+      const response = await fetch('http://localhost:3000/api/datasensor/topic', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ topic: newTopic }),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      setSensorTopic(data.sensor.topic);
+      setIsEditingTopic(false);
+    } catch (error) {
+      console.error('Gagal mengupdate topic:', error);
+    }
+  };
+
+  // Tambahkan useEffect untuk fetch topic
+  useEffect(() => {
+    fetchSensorTopic();
+  }, []);
+
   return (
-    <div className="min-h-screen bg-green-100 font-Poppins">
-
-
+    <div className="min-h-screen bg-green-100/70 font-Poppins">
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-6 flex items-center">
-            <Thermometer size={48} className="text-green-500 mr-4" />
-            <div>
-              <h2 className="text-xl font-semibold">Suhu</h2>
-              <p className="text-3xl font-bold text-green-500">24°C</p>
+        {/* Summary Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {[
+            { icon: Thermometer, title: "Suhu", value: "24°C", color: "green-500" },
+            { icon: Droplet, title: "Kelembaban", value: "60%", color: "green-400" },
+
+          ].map((stat, idx) => (
+            <div key={idx} 
+                 className="bg-white/20 backdrop-blur-md rounded-2xl p-6
+                          border border-white/30 shadow-lg
+                          hover:bg-white/30 transition-all duration-300
+                          group">
+              <div className="flex items-center">
+                <div className={`p-4 rounded-xl bg-${stat.color}/10 mr-4
+                               group-hover:scale-110 transition-transform duration-300`}>
+                  <stat.icon size={32} className={`text-${stat.color}`} />
+                </div>
+                <div>
+                  <h2 className="text-green-700/70 font-medium">{stat.title}</h2>
+                  <p className={`text-3xl font-bold text-${stat.color}`}>{stat.value}</p>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-6 flex items-center">
-            <Droplet size={48} className="text-green-500 mr-4" />
-            <div>
-              <h2 className="text-xl font-semibold">Kelembaban</h2>
-              <p className="text-3xl font-bold text-green-500">60%</p>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-6 flex items-center">
-            <Wind size={48} className="text-green-500 mr-4" />
-            <div>
-              <h2 className="text-xl font-semibold">Sirkulasi Udara</h2>
-              <p className="text-3xl font-bold text-green-500">Normal</p>
-            </div>
-          </div>
+          ))}
         </div>
 
         {/* Sensor Data Chart */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h2 className="text-2xl font-semibold mb-4">Data Sensor</h2>
-          <Line data={sensorData} options={options} />
+        <div className="bg-white/20 backdrop-blur-md rounded-2xl p-8 mb-8
+                      border border-white/30 shadow-lg">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="h-8 w-1 bg-gradient-to-b from-green-400 to-green-600 rounded-full"></div>
+              <h2 className="text-2xl font-bold text-green-700">Data Sensor</h2>
+            </div>
+            
+            {/* Tambahkan tombol edit dan input topic */}
+            <div className="flex items-center space-x-2">
+              {isEditingTopic ? (
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={sensorTopic}
+                    onChange={(e) => setSensorTopic(e.target.value)}
+                    className="px-3 py-2 rounded-lg bg-white/30 border border-green-500/30
+                             text-green-700 placeholder-green-600/50 text-sm"
+                    placeholder="Masukkan topic MQTT"
+                  />
+                  <button
+                    onClick={() => updateSensorTopic(sensorTopic)}
+                    className="p-2 rounded-lg bg-green-500/20 hover:bg-green-500/30
+                             transition-colors duration-200"
+                  >
+                    <Save size={20} className="text-green-700" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setIsEditingTopic(true)}
+                  className="p-2 rounded-lg bg-green-500/20 hover:bg-green-500/30
+                           transition-colors duration-200"
+                >
+                  <Settings size={20} className="text-green-700" />
+                </button>
+              )}
+            </div>
+          </div>
+          
+          <Line data={sensorData} options={{
+            ...options,
+            plugins: {
+              legend: {
+                labels: {
+                  color: '#15803d' // text-green-700
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: {
+                  color: 'rgba(34, 197, 94, 0.1)' // green-500/10
+                },
+                ticks: {
+                  color: '#15803d' // text-green-700
+                }
+              },
+              y: {
+                grid: {
+                  color: 'rgba(34, 197, 94, 0.1)'
+                },
+                ticks: {
+                  color: '#15803d'
+                }
+              }
+            }
+          }} />
         </div>
 
-        {/* Plant Status and Sensor History */}
+        {/* Nutrient Stats and History Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Nutrient Status */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-semibold">Status Nutrisi</h2>
+          <div className="bg-white/20 backdrop-blur-md rounded-2xl p-8
+                       border border-white/30 shadow-lg">
+            <div className="flex justify-between items-center mb-8">
+              <div className="flex items-center space-x-3">
+                <div className="h-8 w-1 bg-gradient-to-b from-green-400 to-green-600 rounded-full"></div>
+                <h2 className="text-2xl font-bold text-green-700">Status Nutrisi</h2>
+              </div>
+              <div className="flex items-center space-x-2 bg-green-500/10 backdrop-blur px-4 py-1.5 
+                            rounded-full border border-green-500/20">
+                <div className="animate-pulse-slow w-2 h-2 rounded-full bg-green-500"></div>
+                <span className="text-sm text-green-700 font-medium">Live Data</span>
+              </div>
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {nutrients.map((nutrient) => (
                 <div key={nutrient.id} 
-                     className="relative p-6 bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-800">{nutrient.name}</h3>
-                      <p className={`text-2xl font-bold text-${nutrient.color}-500`}>
-                        {nutrient.value}{nutrient.unit}
-                      </p>
+                     className="group relative p-6 rounded-xl transition-all  duration-300"
+                     style={{
+                       background: `linear-gradient(135deg, 
+                         ${nutrient.color}70 0%, 
+                         ${nutrient.color}50 100%
+                       )`,
+                       boxShadow: `0 8px 32px -4px ${nutrient.color}40`
+                     }}>
+                  {/* Header Section */}
+                  <div className="relative z-10">
+                    <div className="flex justify-between items-start">
+                        <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 rounded-full"
+                               style={{ backgroundColor: nutrient.color }}></div>
+                        <h3 className="text-xl font-bold text-white drop-shadow-md">
+                            {nutrient.name}
+                          </h3>
+                      </div>
+
+                      {/* Edit/Save Button */}
+                      {editMode === nutrient.id ? (
+                        <button onClick={() => handleSave(nutrient.id)}
+                                className="p-3 rounded-xl transition-all duration-300
+                                         bg-white/20 hover:bg-white/30 backdrop-blur-sm">
+                          <Save size={20} className="text-white drop-shadow-md" />
+                        </button>
+                      ) : (
+                        <button onClick={() => handleEdit(nutrient.id, nutrient.topic)}
+                                className="p-3 rounded-xl transition-all duration-300
+                                         bg-white/20 hover:bg-white/30 backdrop-blur-sm">
+                          <Settings size={20} className="text-white drop-shadow-md" />
+                        </button>
+                      )}
                     </div>
-                    {editMode === nutrient.id ? (
-                      <button
-                        onClick={() => handleSave(nutrient.id)}
-                        className="p-2 rounded-full bg-green-100 hover:bg-green-200 transition-colors"
-                      >
-                        <Save size={18} className="text-green-600" />
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleEdit(nutrient.id, nutrient.topic)}
-                        className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-                      >
-                        <Settings size={18} className="text-gray-600" />
-                      </button>
-                    )}
-                  </div>
-                  
-                  {editMode === nutrient.id ? (
-                    <div className="mt-2">
-                      <input
-                        type="text"
-                        value={editTopic}
-                        onChange={(e) => setEditTopic(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                        placeholder="Masukkan MQTT topic"
-                      />
-                    </div>
-                  ) : (
-                    <div className="mt-2">
-                      <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{
-                            backgroundColor: nutrient.color,
-                            width: `${(nutrient.value / getMaxValue(nutrient.id)) * 100}%`
-                          }}
-                        ></div>
+
+                    {/* Value Display */}
+                    <div className="mt-4 mb-6">
+                      <div className="flex items-baseline">
+                        <span className="text-6xl font-bold tracking-tighter text-white drop-shadow-lg">
+                          {Number.isInteger(nutrient.value) ? 
+                            Math.floor(nutrient.value) : 
+                            nutrient.value?.toFixed(1) || '0'}
+                        </span>
+                        <span className="ml-2 text-lg font-medium text-white/90">
+                          {nutrient.unit}
+                        </span>
                       </div>
                     </div>
-                  )}
-                </div>
+
+
+
+                      {/* Edit Topic Input */}
+                      {editMode === nutrient.id && (
+                        <div className="mt-4">
+                          <input
+                            type="text"
+                            value={editTopic}
+                            onChange={(e) => setEditTopic(e.target.value)}
+                            className="w-full p-3 bg-black/30 border border-white/40 rounded-xl
+                                     text-white placeholder-white/60 text-sm font-medium
+                                     focus:ring-2 focus:ring-white/70 focus:border-transparent
+                                     transition-all duration-200"
+                            placeholder="Masukkan MQTT topic"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                
               ))}
             </div>
           </div>
 
           {/* Sensor History */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-2xl font-semibold mb-4">Riwayat Sensor</h2>
+          <div className="bg-white/20 backdrop-blur-md rounded-2xl p-8
+                       border border-white/30 shadow-lg">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="h-8 w-1 bg-gradient-to-b from-green-400 to-green-600 rounded-full"></div>
+              <h2 className="text-2xl font-bold text-green-700">Riwayat Sensor</h2>
+            </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left">
+              <table className="w-full">
                 <thead>
-                  <tr className="bg-green-100">
-                    <th className="p-3">Waktu</th>
-                    <th className="p-3">Suhu</th>
-                    <th className="p-3">Kelembaban</th>
+                  <tr className="border-b border-green-500/20">
+                    <th className="p-3 text-left text-green-700">Waktu</th>
+                    <th className="p-3 text-left text-green-700">Suhu</th>
+                    <th className="p-3 text-left text-green-700">Kelembaban</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sensorData.labels.map((time, index) => (
-                    <tr key={index} className="border-b border-gray-200">
-                      <td className="p-3">{time}</td>
-                      <td className="p-3">{sensorData.datasets[0].data[index]}°C</td>
-                      <td className="p-3">{sensorData.datasets[1].data[index]}%</td>
+                    <tr key={index} className="border-b border-green-500/10 
+                                             hover:bg-green-500/5 transition-colors">
+                      <td className="p-3 text-green-600">{time}</td>
+                      <td className="p-3 text-green-600">{sensorData.datasets[0].data[index]}°C</td>
+                      <td className="p-3 text-green-600">{sensorData.datasets[1].data[index]}%</td>
                     </tr>
                   ))}
                 </tbody>
@@ -297,13 +442,3 @@ export default function HydroponicDashboard() {
   );
 }
 
-// Helper function untuk menentukan nilai maksimum untuk progress bar
-function getMaxValue(id: string): number {
-  switch (id) {
-    case 'ph': return 14;
-    case 'tds': return 1500;
-    case 'ec': return 3;
-    case 'nutrient': return 10;
-    default: return 100;
-  }
-}

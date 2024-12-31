@@ -1,0 +1,20 @@
+{
+  "sensor": {
+    "id": "env_sensor",
+    "name": "Sensor Lingkungan",
+    "topic": "hidroponik/sensor/env",
+    "parameters": [
+      {
+        "id": "temperature",
+        "name": "Suhu",
+        "unit": "°C"
+      },
+      {
+        "id": "humidity",
+        "name": "Kelembaban",
+        "unit": "%"
+      }
+    ]
+  }
+}
+

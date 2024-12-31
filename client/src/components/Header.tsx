@@ -15,11 +15,11 @@ const Header = () => {
     return (
         <header className="flex flex-row bg-green-300 p-1 w-auto h-auto animate-fade-in-fast sticky top-0 z-50 sm:h-16 lg:h-20">
             <div className="container mx-auto py-4 px-4 flex justify-between items-center">
-                <h1 className="text-4xl text-white font-extrabold font-Sour sm:text-2xl lg:text-4xl">PlantFlow</h1>
+                <h1 className="text-4xl text-green-700 font-extrabold font-Sour sm:text-2xl lg:text-4xl">PlantFlow</h1>
 
                 <div className="flex items-center space-x-4">
                     {isAdmin && (
-                        <button className="text-white" onClick={handleLogout}>
+                        <button className="text-green-700" onClick={handleLogout}>
                             <LogOut />
                         </button>
                     )}
