@@ -3,16 +3,15 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { connectToDatabase } from '../connectToDatabase.js';
-import MQTTClient from '../MQTTClient.js';
 import Chart from '../models/Chart.js';
 import Device from '../models/Device.js';
 import { MongoClient, ObjectId } from 'mongodb';
 import adminRoutes from './admin.js';
+import nutrientRouter from './nutrientStats.js';
 
 dotenv.config();
 
-const mqttClient = new MQTTClient();
-mqttClient.connect('mqtt://broker.hivemq.com');
+
 
 const app = express();
 const MONGO_URI = process.env.MONGO_URI;
@@ -192,25 +191,8 @@ app.put("/api/chart/:id", async (req, res) => {
   }
 });
 
-app.post('subscribe', (req, res) => {
-  const { mqtt_topic } = req.body;
-  if (!mqtt_topic) {
-    return res.status(400).json({ message: 'Topic diperlukan' });
-  }
-
-  mqttClient.subscribe(mqtt_topic);
-  res.status(200).json({ message: `Subscribe ke Topic: ${mqtt_topic}` });
-});
-
-app.post('unsubscribe', (req, res) => {
-  const { mqtt_topic } = req.body;
-  if (!mqtt_topic) {
-    return res.status(400).json({ message: 'Topic diperlukan' });
-  }
-
-  mqttClient.unsubscribe(mqtt_topic);
-  res.status(200).json({ message: `Unsubscribe dari Topic: ${mqtt_topic}` });
-});
+// Tambahkan router nutrient
+app.use('/api/nutrient', nutrientRouter);
 
 // Tambahkan error handler untuk 404
 app.use((req, res) => {

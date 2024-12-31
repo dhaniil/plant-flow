@@ -1,0 +1,32 @@
+{
+  "nutrients": [
+    {
+      "id": "ph",
+      "name": "pH Level",
+      "topic": "hydro/sched/ph",
+      "color": "#22c55e",
+      "unit": "ph"
+    },
+    {
+      "id": "tds",
+      "name": "TDS",
+      "topic": "hydro/sched/tds",
+      "color": "#3b82f6",
+      "unit": "ppm"
+    },
+    {
+      "id": "ec",
+      "name": "EC",
+      "topic": "hydro/sched/ec",
+      "color": "#8b5cf6",
+      "unit": "mS/cm"
+    },
+    {
+      "id": "nutrient",
+      "name": "Nutrisi",
+      "topic": "hydro/sched/nutri",
+      "color": "#ef4444",
+      "unit": "ml/L"
+    }
+  ]
+}

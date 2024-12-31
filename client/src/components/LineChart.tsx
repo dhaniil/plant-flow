@@ -21,7 +21,7 @@ interface LineChartProps {
   onUpdate: (id: string, updatedData: { name: string; topic: string }) => void;
 }
 
-const MQTT_BROKER_URL = 'wss://broker.hivemq.com:8884/mqtt'; // Gunakan URL broker MQTT yang sesuai
+const MQTT_BROKER_URL = 'wss://broker.hivemq.com:8884/mqtt';
 
 const LineChart: React.FC<LineChartProps> = ({ id, name, topic, onUpdate }) => {
   const [chartName, setChartName] = useState(name);
@@ -134,12 +134,7 @@ const LineChart: React.FC<LineChartProps> = ({ id, name, topic, onUpdate }) => {
           options={{
             responsive: true,
             maintainAspectRatio: false, // Pastikan ini false untuk menggunakan ukuran container
-            plugins: {
-              legend: {
-                display: true,
-                position: 'top',
-              },
-            },
+ 
           }}
         />
       </div>
