@@ -9,7 +9,7 @@ import React from 'react';
 
 const BottomNav = () => {
   return (
-    <div className="sticky  bottom-0 left-0 right-0 bg-green-400 text-white p-1">
+    <div className="sticky z-10 bottom-0 left-0 right-0 bg-green-400 text-white p-1">
       <div className="flex justify-center lg:gap-12 md:gap-4 sm:justify-around gap-6">
         <NavLink
           to="/"

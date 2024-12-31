@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import LineChart from '../components/LineChart';
 import AddChartButton from '../components/AddChartButton';
+import { useAdmin } from '../../context/AdminContext';
 
 
 interface ChartData {
@@ -15,6 +16,7 @@ interface ChartData {
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 const Graphs: React.FC = () => {
+  const { isAdmin } = useAdmin();
   const [charts, setCharts] = useState<ChartData[]>([]);
   const [newChartName, setNewChartName] = useState('');
   const [newChartTopic, setNewChartTopic] = useState('');
@@ -91,16 +93,14 @@ const Graphs: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50/50 to-teal-50">
       {/* Header Section with Decorative Elements */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('/leaf-pattern.png')] opacity-5"></div>
-        <div className="container mx-auto px-6 py-8 relative">
+        <div className="absolute inset-0 bg-[url('/leaf-pattern.png')] opacity-5 h-auto"></div>
+        <div className="container mx-auto px-6 py-8 relative min-h-24 h-auto">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold text-green-800 tracking-tight mb-2">
                 IoT Monitoring Charts
               </h1>
-              <p className="text-green-600/80 text-sm">
-                Real-time hydroponic system monitoring dashboard
-              </p>
+
             </div>
             {/* Optional: Add summary stats here */}
             <div className="flex gap-4">
@@ -112,7 +112,7 @@ const Graphs: React.FC = () => {
           </div>
         </div>
       </div>
-
+  
       {/* Charts Grid Section */}
       <div className="container mx-auto px-6 py-6">
         <div className="grid grid-cols-1 gap-6">
@@ -128,10 +128,12 @@ const Graphs: React.FC = () => {
           ))}
         </div>
       </div>
-
+  
       {/* Floating Add Button */}
-      <AddChartButton onAddChart={handleAddChart} />
-
+      {isAdmin && (
+        <AddChartButton onAddChart={handleAddChart} />
+      )}
+  
       {/* Decorative Elements */}
       <div className="fixed bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-green-300 via-emerald-300 to-teal-300"></div>
       <div className="fixed top-0 left-0 w-1 h-screen bg-gradient-to-b from-green-300 via-emerald-300 to-teal-300"></div>

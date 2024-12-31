@@ -68,10 +68,10 @@ module.exports = {
 
       },
       screens: {
-        sm: '640px',
-        md: '768px',
-        lg: '1024px',
-        xl: '1280px',
+        sm: "340px",
+        md: "540px",
+        lg: "768px",
+        xl: "1180px",
 
       },
       fontFamily: {

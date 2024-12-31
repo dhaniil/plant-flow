@@ -1,5 +1,6 @@
 // src/components/DeviceComponent.tsx
 import React, { useState } from "react";
+import { useAdmin } from '../../context/AdminContext';
 
 interface DeviceProps {
     deviceId: string;
@@ -14,8 +15,9 @@ interface DeviceProps {
 const DeviceComponent: React.FC<DeviceProps> = ({ deviceId, device_id, name, status, mqtt_topic, onUpdate, onDelete }) => {
     const [editing, setEditing] = useState(false);
     const [editedName, setEditedName] = useState(name);
-    const [editedStatus, setEditedStatus] = useState(status);
+    const [editedStatus, setEditedStatus] = useState(status.toString());
     const [editedMqttTopic, setEditedMqttTopic] = useState(mqtt_topic);
+    const { isAdmin } = useAdmin();
 
     const handleEditClick = () => {
         setEditing(true);
@@ -120,9 +122,10 @@ const DeviceComponent: React.FC<DeviceProps> = ({ deviceId, device_id, name, sta
                 hover:scale-[1.02] hover:border-white/60">
                 <div className="flex justify-between items-start mb-4">
                     <div>
-                        <p className="text-gray-600 font-medium">{name}</p>
+                        <p className="text-2xl font-semibold text-gray-800">{name}</p>
                     </div>
                     <div className="flex gap-3">
+                        {isAdmin && (
                         <button 
                             onClick={handleEditClick} 
                             className="text-gray-600 hover:text-green-500 transition-colors p-2 
@@ -130,20 +133,23 @@ const DeviceComponent: React.FC<DeviceProps> = ({ deviceId, device_id, name, sta
                         >
                             <i className="ri-edit-line text-xl"></i>
                         </button>
+                        )}
+                        {isAdmin && (
                         <button 
                             onClick={handleDeleteClick} 
                             className="text-gray-600 hover:text-red-500 transition-colors p-2 
                                 hover:bg-red-50 rounded-full"
                         >
                             <i className="ri-delete-bin-line text-xl"></i>
-                        </button>
+                            </button>
+                        )}
                     </div>
                 </div>
                 <div className="space-y-3 mt-6">
                     <div className="flex items-center space-x-2">
                         <div className="w-2 h-2 rounded-full bg-green-500"></div>
                         <p className="text-gray-700">Status: 
-                            <span className="font-medium ml-2">{status}</span>
+                            <span className="font-medium ml-2">{status.toString()}</span>
                         </p>
                     </div>
                     <div className="flex items-center space-x-2">

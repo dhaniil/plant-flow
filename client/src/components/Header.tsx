@@ -13,18 +13,22 @@ const Header = () => {
     };
 
     return (
-        <header className="flex flex-row bg-green-300 p-1 w-auto h-auto animate-fade-in-fast sticky top-0 z-50 sm:h-16 lg:h-20">
+        <header className="flex flex-row bg-green-300 p-1 w-auto h-auto animate-fade-in-fast sticky top-0 z-50 sm:h-10 sm:text-2xl lg:h-16 lg:text-4xl">
             <div className="container mx-auto py-4 px-4 flex justify-between items-center">
-                <h1 className="text-4xl text-green-700 font-extrabold font-Sour sm:text-2xl lg:text-4xl">PlantFlow</h1>
+                <h1 className="font-extrabold font-Sour">
+                <i className="ri-leaf-line ml-2 text-green-700"></i>
+                    <span className="text-slate-100">Plant</span>
+                    <span className="text-green-700">Flow</span>
+                </h1>
 
                 <div className="flex items-center space-x-4">
                     {isAdmin && (
-                        <button className="text-green-700" onClick={handleLogout}>
+                        <button className="text-green-700 hover:text-green-800 transition-colors" 
+                                onClick={handleLogout}>
                             <LogOut />
                         </button>
                     )}
                 </div>
-
             </div>  
         </header>
     );

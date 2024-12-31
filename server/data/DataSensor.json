@@ -2,7 +2,7 @@
   "sensor": {
     "id": "env_sensor",
     "name": "Sensor Lingkungan",
-    "topic": "hidroponik/sensor/env",
+    "topic": "hydro/sched/env",
     "parameters": [
       {
         "id": "temperature",
@@ -17,4 +17,3 @@
     ]
   }
 }
-

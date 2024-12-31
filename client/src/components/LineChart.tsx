@@ -11,6 +11,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
+import { useAdmin } from '../../context/AdminContext';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -25,6 +26,7 @@ interface LineChartProps {
 const MQTT_BROKER_URL = 'wss://broker.hivemq.com:8884/mqtt';
 
 const LineChart: React.FC<LineChartProps> = ({ id, name, topic, onUpdate, onDelete }) => {
+  const { isAdmin } = useAdmin();
   const [chartName, setChartName] = useState(name);
   const [mqttTopic, setMqttTopic] = useState(topic);
   const [isEditing, setIsEditing] = useState(false);
@@ -89,7 +91,7 @@ const LineChart: React.FC<LineChartProps> = ({ id, name, topic, onUpdate, onDele
 
   return (
     <div className="bg-white rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 
-      border border-green-100/50 backdrop-blur-sm">
+      border border-green-100/50 ">
       <div className="p-6">
         {/* Header Section */}
         <div className="flex justify-between items-center mb-6">
@@ -128,7 +130,7 @@ const LineChart: React.FC<LineChartProps> = ({ id, name, topic, onUpdate, onDele
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-row sm:flex-col sm:items-start items-center gap-3">
                 <h3 className="text-xl font-bold text-green-800 tracking-tight">{chartName}</h3>
                 <span className="px-4 py-1.5 bg-green-100 text-green-700 rounded-full text-sm
                   font-medium border border-green-200/50 shadow-sm">
@@ -136,6 +138,7 @@ const LineChart: React.FC<LineChartProps> = ({ id, name, topic, onUpdate, onDele
                 </span>
               </div>
               <div className="flex gap-2">
+                {isAdmin && (
                 <button 
                   onClick={() => setIsEditing(true)} 
                   className="text-gray-600 hover:text-green-500 transition-colors p-2.5
@@ -144,6 +147,8 @@ const LineChart: React.FC<LineChartProps> = ({ id, name, topic, onUpdate, onDele
                 >
                   <i className="ri-edit-line text-xl"></i>
                 </button>
+                )}
+                {isAdmin && (
                 <button 
                   onClick={() => onDelete(id)}
                   className="text-gray-600 hover:text-red-500 transition-colors p-2.5
@@ -151,7 +156,8 @@ const LineChart: React.FC<LineChartProps> = ({ id, name, topic, onUpdate, onDele
                     hover:border-red-200/50 shadow-sm"
                 >
                   <i className="ri-delete-bin-line text-xl"></i>
-                </button>
+                  </button>
+                )}
               </div>
             </>
           )}
@@ -191,7 +197,7 @@ const LineChart: React.FC<LineChartProps> = ({ id, name, topic, onUpdate, onDele
                     font: {
                       size: 13,
                       family: "'Inter', sans-serif",
-                      weight: '500'
+                      weight: 500
                     },
                     color: '#166534' // green-800
                   }
@@ -202,7 +208,7 @@ const LineChart: React.FC<LineChartProps> = ({ id, name, topic, onUpdate, onDele
                   titleFont: {
                     size: 14,
                     family: "'Inter', sans-serif",
-                    weight: '600'
+                    weight: 600
                   },
                   bodyFont: {
                     size: 13,
@@ -216,8 +222,7 @@ const LineChart: React.FC<LineChartProps> = ({ id, name, topic, onUpdate, onDele
                 y: {
                   beginAtZero: true,
                   grid: {
-                    color: 'rgba(22, 163, 74, 0.1)',
-                    drawBorder: false
+                    color: 'rgba(22, 163, 74, 0.1)'
                   },
                   ticks: {
                     font: {

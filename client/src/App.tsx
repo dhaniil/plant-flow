@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import mqtt from 'mqtt';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 import { Menu, Bell, Droplet, Thermometer, Wind, TreesIcon as Plant, LogOut, Settings, Save } from 'lucide-react'; // Import LogOut icon
 import { useAdmin } from '../context/AdminContext';
-import Header from './components/Header';
-import Cuaca from './components/Cuaca';
+
+
 
 ChartJS.register(
   CategoryScale,
@@ -17,45 +17,6 @@ ChartJS.register(
   Legend
 );
 
-const sensorData = {
-  labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
-  datasets: [
-    {
-      
-      label: 'Suhu (°C)',
-      data: [22, 23, 25, 27, 26, 24],
-      borderColor: 'rgb(34, 197, 94)',
-      backgroundColor: 'rgba(34, 197, 94, 0.5)',
-    },
-    {
-      label: 'Kelembaban (%)',
-      data: [60, 62, 58, 55, 57, 59],
-      borderColor: 'rgb(134, 239, 172)',
-      backgroundColor: 'rgba(134, 239, 172, 0.5)',
-    },
-  ],
-};
-
-const options = {
-  responsive: true,
-  scales: {
-    x: {
-      type: 'category' as const,
-    },
-    y: {
-      type: 'linear' as const,
-      position: 'left' as const,
-    },
-  },
-};
-
-const plantStatus = [
-  { name: 'Selada', status: 'Sehat', harvestDate: '15 Mei 2023' },
-  { name: 'Bayam', status: 'Perlu Perhatian', harvestDate: '20 Mei 2023' },
-  { name: 'Kangkung', status: 'Sehat', harvestDate: '18 Mei 2023' },
-];
-
-// Tambahkan interface untuk nutrient data
 interface NutrientData {
   id: string;
   name: string;
@@ -65,59 +26,147 @@ interface NutrientData {
   unit: string;
 }
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+const MQTT_BROKER_URL = import.meta.env.VITE_MQTT_BROKER_URL;
+
+// Periksa apakah BACKEND_URL sudah benar
+console.log('Backend URL:', import.meta.env.VITE_BACKEND_URL); // Temporary debug
+
+// Utility function untuk safe parsing JSON dengan pengecekan content type
+const safeParseJSON = async (response: Response) => {
+  const contentType = response.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    if (import.meta.env.DEV) {
+      console.error('Invalid content type:', contentType);
+    }
+    throw new Error('Invalid response type');
+  }
+
+  const text = await response.text();
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch (e) {
+    if (import.meta.env.DEV) {
+      console.error('JSON Parse Error:', text);
+    }
+    throw new Error('Invalid response format');
+  }
+};
+
 export default function HydroponicDashboard() {
   const { isAdmin, logout } = useAdmin();
   
+  const [sensorValues, setSensorValues] = useState({
+    temperature: 0,
+    humidity: 0
+  });
+
+  const [sensorHistory, setSensorHistory] = useState({
+    temperatures: Array(6).fill(null),
+    humidities: Array(6).fill(null),
+    timestamps: Array(6).fill('')
+  });
+
   // State untuk nutrient data
   const [nutrients, setNutrients] = useState<NutrientData[]>([]);
-  
   const [editMode, setEditMode] = useState<string | null>(null);
   const [editTopic, setEditTopic] = useState('');
-  
-  // Update MQTT setup
-  const MQTT_BROKER_URL = 'wss://broker.hivemq.com:8884/mqtt';
-
-  // Tambahkan state untuk topic dan edit mode
   const [sensorTopic, setSensorTopic] = useState('');
   const [isEditingTopic, setIsEditingTopic] = useState(false);
 
+  // Definisikan sensorData di dalam komponen
+  const sensorData = {
+    labels: sensorHistory.timestamps,
+    datasets: [
+      {
+        label: 'Suhu (°C)',
+        data: sensorHistory.temperatures,
+        borderColor: 'rgb(34, 197, 94)',
+        backgroundColor: 'rgba(34, 197, 94, 0.5)',
+      },
+      {
+        label: 'Kelembaban (%)',
+        data: sensorHistory.humidities,
+        borderColor: 'rgb(134, 239, 172)',
+        backgroundColor: 'rgba(134, 239, 172, 0.5)',
+      },
+    ],
+  };
+
+  const mqttClientRef = useRef<mqtt.MqttClient | null>(null);
+  const mountedRef = useRef(false);
+
   useEffect(() => {
-    const client = mqtt.connect(MQTT_BROKER_URL);
-    
-    client.on('connect', () => {
-      console.log('Connected to MQTT broker');
-      nutrients.forEach(nutrient => {
-        client.subscribe(nutrient.topic);
+    if (mountedRef.current) return;
+    mountedRef.current = true;
+
+    if (mqttClientRef.current) {
+      mqttClientRef.current.end(true);
+      mqttClientRef.current = null;
+    }
+
+    if (sensorTopic) {
+      mqttClientRef.current = mqtt.connect(MQTT_BROKER_URL);
+      
+      mqttClientRef.current.on('connect', () => {
+        mqttClientRef.current?.subscribe(sensorTopic);
       });
-    });
 
-    client.on('error', (err) => {
-      console.error('MQTT connection error:', err);
-    });
+      mqttClientRef.current.on('error', (err) => {
+        if (import.meta.env.DEV) {
+          console.error('MQTT connection error:', err);
+        }
+      });
 
-    client.on('message', (topic, message) => {
-      console.log(`Received message from ${topic}:`, message.toString());
-      setNutrients(prev => prev.map(nutrient => {
-        if (nutrient.topic === topic) {
-          const value = parseFloat(message.toString());
-          if (!isNaN(value)) {
-            return { ...nutrient, value };
+      mqttClientRef.current.on('message', (topic, message) => {
+        if (!mountedRef.current) return;
+        
+        if (topic === sensorTopic) {
+          const messageStr = message.toString();
+          
+          const humidityMatch = messageStr.match(/Kelembaban:\s*(\d+\.?\d*)/);
+          const temperatureMatch = messageStr.match(/Suhu:\s*(\d+\.?\d*)/);
+          
+          if (humidityMatch && temperatureMatch) {
+            const humidity = parseFloat(humidityMatch[1]);
+            const temperature = parseFloat(temperatureMatch[1]);
+            
+            if (!isNaN(temperature) && !isNaN(humidity)) {
+              setSensorValues(prev => {
+                if (prev.temperature === temperature && prev.humidity === humidity) {
+                  return prev;
+                }
+                return {
+                  temperature: temperature,
+                  humidity: humidity
+                };
+              });
+
+              const currentTime = new Date().toLocaleTimeString('id-ID', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              });
+
+              setSensorHistory(prev => ({
+                temperatures: [...prev.temperatures.slice(1), temperature],
+                humidities: [...prev.humidities.slice(1), humidity],
+                timestamps: [...prev.timestamps.slice(1), currentTime]
+              }));
+            }
           }
         }
-        return nutrient;
-      }));
-    });
+      });
+    }
 
     return () => {
-      console.log('Disconnecting MQTT client');
-      if (client.connected) {
-        nutrients.forEach(nutrient => {
-          client.unsubscribe(nutrient.topic);
-        });
-        client.end();
+      mountedRef.current = false;
+      if (mqttClientRef.current) {
+        mqttClientRef.current.unsubscribe(sensorTopic);
+        mqttClientRef.current.end(true);
+        mqttClientRef.current = null;
       }
     };
-  }, [nutrients]);
+  }, [sensorTopic]);
 
   const handleEdit = (id: string, topic: string) => {
     setEditMode(id);
@@ -136,17 +185,40 @@ export default function HydroponicDashboard() {
   // Tambahkan fungsi untuk mengambil dan update topic
   const fetchNutrientTopics = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/nutrient/topics');
-      const data = await response.json();
-      setNutrients(data.nutrients);
+      if (!BACKEND_URL) {
+        throw new Error('Backend URL not configured');
+      }
+
+      const response = await fetch(`${BACKEND_URL}/api/nutrient/topics`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await safeParseJSON(response);
+      if (data && Array.isArray(data.nutrients)) {
+        setNutrients(data.nutrients);
+      } else {
+        throw new Error('Invalid data structure');
+      }
     } catch (error) {
-      console.error('Gagal mengambil data nutrient:', error);
+      if (import.meta.env.DEV) {
+        console.error('Gagal mengambil data nutrient:', error);
+        console.error('Backend URL:', BACKEND_URL);
+      }
+      // Fallback ke empty array di production
+      setNutrients([]);
     }
   };
 
   const updateNutrientTopic = async (id: string, topic: string) => {
     try {
-      const response = await fetch(`http://localhost:3000/api/nutrient/topic/${id}`, {
+      const response = await fetch(`${BACKEND_URL}/api/nutrient/topic/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -154,14 +226,24 @@ export default function HydroponicDashboard() {
         body: JSON.stringify({ topic }),
       });
       
-      if (response.ok) {
-        const updatedNutrient = await response.json();
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await safeParseJSON(response);
+      if (data && data.topic) {
         setNutrients(prev => prev.map(n => 
-          n.id === id ? { ...n, topic: updatedNutrient.topic } : n
+          n.id === id ? { ...n, topic: data.topic } : n
         ));
+      } else {
+        throw new Error('Invalid update response format');
       }
     } catch (error) {
-      console.error('Gagal mengupdate topic:', error);
+      if (import.meta.env.DEV) {
+        console.error('Gagal mengupdate topic:', error);
+      }
+      // Rollback ke previous state di production
+      setEditMode(null);
     }
   };
 
@@ -173,23 +255,41 @@ export default function HydroponicDashboard() {
   // Tambahkan fungsi untuk mengambil topic
   const fetchSensorTopic = async () => {
     try {
-      console.log('Fetching sensor topic...');
-      const response = await fetch('http://localhost:3000/api/datasensor/topic');
+      if (!BACKEND_URL) {
+        throw new Error('Backend URL not configured');
+      }
+
+      const response = await fetch(`${BACKEND_URL}/api/datasensor/topic`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      const data = await response.json();
-      console.log('Received data:', data);
-      setSensorTopic(data.sensor.topic);
+
+      const data = await safeParseJSON(response);
+      if (data?.sensor?.topic) {
+        setSensorTopic(data.sensor.topic);
+      } else {
+        throw new Error('Invalid topic data structure');
+      }
     } catch (error) {
-      console.error('Gagal mengambil topic:', error);
+      if (import.meta.env.DEV) {
+        console.error('Gagal mengambil topic:', error);
+        console.error('Backend URL:', BACKEND_URL);
+      }
+      // Fallback ke default topic di production
+      setSensorTopic('hydro/sched/env');
     }
   };
 
   // Tambahkan fungsi untuk update topic
   const updateSensorTopic = async (newTopic: string) => {
     try {
-      const response = await fetch('http://localhost:3000/api/datasensor/topic', {
+      const response = await fetch(`${BACKEND_URL}/api/datasensor/topic`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -203,11 +303,12 @@ export default function HydroponicDashboard() {
       setSensorTopic(data.sensor.topic);
       setIsEditingTopic(false);
     } catch (error) {
-      console.error('Gagal mengupdate topic:', error);
+      if (import.meta.env.DEV) {
+        console.error('Gagal mengupdate topic:', error);
+      }
     }
   };
 
-  // Tambahkan useEffect untuk fetch topic
   useEffect(() => {
     fetchSensorTopic();
   }, []);
@@ -217,24 +318,33 @@ export default function HydroponicDashboard() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         {/* Summary Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="animate-fade-in-slow grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {[
-            { icon: Thermometer, title: "Suhu", value: "24°C", color: "green-500" },
-            { icon: Droplet, title: "Kelembaban", value: "60%", color: "green-400" },
-
+            { 
+              icon: Thermometer, 
+              title: "Suhu", 
+              value: `${sensorValues.temperature.toFixed(1)}°C`, 
+              color: "white" 
+            },
+            { 
+              icon: Droplet, 
+              title: "Kelembaban", 
+              value: `${sensorValues.humidity.toFixed(1)}%`, 
+              color: "white" 
+            },
           ].map((stat, idx) => (
             <div key={idx} 
-                 className="bg-white/20 backdrop-blur-md rounded-2xl p-6
-                          border border-white/30 shadow-lg
-                          hover:bg-white/30 transition-all duration-300
+                 className="bg-green-500 rounded-2xl p-6
+                          border border-white/30 shadow-md
+                          hover: transition-all duration-300
                           group">
               <div className="flex items-center">
-                <div className={`p-4 rounded-xl bg-${stat.color}/10 mr-4
+                <div className={`p-4 rounded-xl bg-green-200/40 mr-4
                                group-hover:scale-110 transition-transform duration-300`}>
                   <stat.icon size={32} className={`text-${stat.color}`} />
                 </div>
                 <div>
-                  <h2 className="text-green-700/70 font-medium">{stat.title}</h2>
+                  <h2 className="text-white font-medium">{stat.title}</h2>
                   <p className={`text-3xl font-bold text-${stat.color}`}>{stat.value}</p>
                 </div>
               </div>
@@ -243,85 +353,106 @@ export default function HydroponicDashboard() {
         </div>
 
         {/* Sensor Data Chart */}
-        <div className="bg-white/20 backdrop-blur-md rounded-2xl p-8 mb-8
-                      border border-white/30 shadow-lg">
+        <div className="bg-white/20 rounded-2xl p-4 sm:p-8 mb-8 
+                      border border-white/30 shadow-lg animate-fade-in-slow">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
-              <div className="h-8 w-1 bg-gradient-to-b from-green-400 to-green-600 rounded-full"></div>
+              <div className="h-8 w-1 bg-gradient-to-b from-green-400 to-green-600 rounded-full "></div>
               <h2 className="text-2xl font-bold text-green-700">Data Sensor</h2>
             </div>
             
-            {/* Tambahkan tombol edit dan input topic */}
-            <div className="flex items-center space-x-2">
-              {isEditingTopic ? (
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="text"
-                    value={sensorTopic}
-                    onChange={(e) => setSensorTopic(e.target.value)}
-                    className="px-3 py-2 rounded-lg bg-white/30 border border-green-500/30
-                             text-green-700 placeholder-green-600/50 text-sm"
-                    placeholder="Masukkan topic MQTT"
-                  />
+            {isAdmin && (
+              <div className="flex items-center space-x-2">
+                {isEditingTopic ? (
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      value={sensorTopic}
+                      onChange={(e) => setSensorTopic(e.target.value)}
+                      className="px-3 py-2 rounded-lg bg-white/30 border border-green-500/30
+                               text-green-700 placeholder-green-600/50 text-sm"
+                      placeholder="Masukkan topic MQTT"
+                    />
+                    <button
+                      onClick={() => updateSensorTopic(sensorTopic)}
+                      className="p-2 rounded-lg bg-green-500/20 hover:bg-green-500/30
+                               transition-colors duration-200"
+                    >
+                      <Save size={20} className="text-green-700" />
+                    </button>
+                  </div>
+                ) : (
                   <button
-                    onClick={() => updateSensorTopic(sensorTopic)}
+                    onClick={() => setIsEditingTopic(true)}
                     className="p-2 rounded-lg bg-green-500/20 hover:bg-green-500/30
                              transition-colors duration-200"
                   >
-                    <Save size={20} className="text-green-700" />
+                    <Settings size={20} className="text-green-700" />
                   </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setIsEditingTopic(true)}
-                  className="p-2 rounded-lg bg-green-500/20 hover:bg-green-500/30
-                           transition-colors duration-200"
-                >
-                  <Settings size={20} className="text-green-700" />
-                </button>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
           
-          <Line data={sensorData} options={{
-            ...options,
-            plugins: {
-              legend: {
-                labels: {
-                  color: '#15803d' // text-green-700
-                }
-              }
-            },
-            scales: {
-              x: {
-                grid: {
-                  color: 'rgba(34, 197, 94, 0.1)' // green-500/10
+          <div className="h-[300px] sm:h-[400px]">
+            <Line 
+              data={sensorData} 
+              options={{
+                ...Option,
+                maintainAspectRatio: false,
+                responsive: true,
+                plugins: {
+                  legend: {
+                    position: 'top' as const,
+                    labels: {
+                      color: '#15803d',
+                      font: {
+                        size: 12,
+                        family: "'Poppins', sans-serif"
+                      },
+                      padding: 10
+                    }
+                  }
                 },
-                ticks: {
-                  color: '#15803d' // text-green-700
+                scales: {
+                  x: {
+                    grid: {
+                      color: 'rgba(34, 197, 94, 0.1)'
+                    },
+                    ticks: {
+                      color: '#15803d',
+                      font: {
+                        size: 10,
+                        family: "'Poppins', sans-serif"
+                      }
+                    }
+                  },
+                  y: {
+                    grid: {
+                      color: 'rgba(34, 197, 94, 0.1)'
+                    },
+                    ticks: {
+                      color: '#15803d',
+                      font: {
+                        size: 10,
+                        family: "'Poppins', sans-serif"
+                      }
+                    }
+                  }
                 }
-              },
-              y: {
-                grid: {
-                  color: 'rgba(34, 197, 94, 0.1)'
-                },
-                ticks: {
-                  color: '#15803d'
-                }
-              }
-            }
-          }} />
+              }} 
+            />
+          </div>
         </div>
 
         {/* Nutrient Stats and History Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="animate-fade-in-slow grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Nutrient Status */}
-          <div className="bg-white/20 backdrop-blur-md rounded-2xl p-8
-                       border border-white/30 shadow-lg">
+          <div className="bg-white/20  rounded-2xl p-8 border border-white/30 shadow-lg">
             <div className="flex justify-between items-center mb-8">
-              <div className="flex items-center space-x-3">
-                <div className="h-8 w-1 bg-gradient-to-b from-green-400 to-green-600 rounded-full"></div>
-                <h2 className="text-2xl font-bold text-green-700">Status Nutrisi</h2>
+              <div className="flex items-center space-x-2">
+                <div className="lg:h-8 sm:h-6 w-1 bg-gradient-to-b from-green-400 to-green-600 rounded-full  "></div>
+                <h2 className="lg:text-2xl font-bold text-green-700 sm:text-base">Status Nutrisi</h2>
               </div>
               <div className="flex items-center space-x-2 bg-green-500/10 backdrop-blur px-4 py-1.5 
                             rounded-full border border-green-500/20">
@@ -333,7 +464,7 @@ export default function HydroponicDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {nutrients.map((nutrient) => (
                 <div key={nutrient.id} 
-                     className="group relative p-6 rounded-xl transition-all  duration-300"
+                     className="group relative p-6 rounded-xl transition-all duration-300"
                      style={{
                        background: `linear-gradient(135deg, 
                          ${nutrient.color}70 0%, 
@@ -341,34 +472,35 @@ export default function HydroponicDashboard() {
                        )`,
                        boxShadow: `0 8px 32px -4px ${nutrient.color}40`
                      }}>
-                  {/* Header Section */}
                   <div className="relative z-10">
                     <div className="flex justify-between items-start">
-                        <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2">
                         <div className="w-3 h-3 rounded-full"
-                               style={{ backgroundColor: nutrient.color }}></div>
+                             style={{ backgroundColor: nutrient.color }}></div>
                         <h3 className="text-xl font-bold text-white drop-shadow-md">
-                            {nutrient.name}
-                          </h3>
+                          {nutrient.name}
+                        </h3>
                       </div>
 
-                      {/* Edit/Save Button */}
-                      {editMode === nutrient.id ? (
-                        <button onClick={() => handleSave(nutrient.id)}
-                                className="p-3 rounded-xl transition-all duration-300
-                                         bg-white/20 hover:bg-white/30 backdrop-blur-sm">
-                          <Save size={20} className="text-white drop-shadow-md" />
-                        </button>
-                      ) : (
-                        <button onClick={() => handleEdit(nutrient.id, nutrient.topic)}
-                                className="p-3 rounded-xl transition-all duration-300
-                                         bg-white/20 hover:bg-white/30 backdrop-blur-sm">
-                          <Settings size={20} className="text-white drop-shadow-md" />
-                        </button>
+                      {isAdmin && (
+                        <>
+                          {editMode === nutrient.id ? (
+                            <button onClick={() => handleSave(nutrient.id)}
+                                    className="p-3 rounded-xl transition-all duration-300
+                                             bg-white/20 hover:bg-white/30 backdrop-blur-sm">
+                              <Save size={20} className="text-white drop-shadow-md" />
+                            </button>
+                          ) : (
+                            <button onClick={() => handleEdit(nutrient.id, nutrient.topic)}
+                                    className="p-3 rounded-xl transition-all duration-300
+                                             bg-white/20 hover:bg-white/30 backdrop-blur-sm">
+                              <Settings size={20} className="text-white drop-shadow-md" />
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
 
-                    {/* Value Display */}
                     <div className="mt-4 mb-6">
                       <div className="flex items-baseline">
                         <span className="text-6xl font-bold tracking-tighter text-white drop-shadow-lg">
@@ -382,27 +514,22 @@ export default function HydroponicDashboard() {
                       </div>
                     </div>
 
-
-
-                      {/* Edit Topic Input */}
-                      {editMode === nutrient.id && (
-                        <div className="mt-4">
-                          <input
-                            type="text"
-                            value={editTopic}
-                            onChange={(e) => setEditTopic(e.target.value)}
-                            className="w-full p-3 bg-black/30 border border-white/40 rounded-xl
-                                     text-white placeholder-white/60 text-sm font-medium
-                                     focus:ring-2 focus:ring-white/70 focus:border-transparent
-                                     transition-all duration-200"
-                            placeholder="Masukkan MQTT topic"
-                          />
-                        </div>
-                      )}
-                    </div>
+                    {isAdmin && editMode === nutrient.id && (
+                      <div className="mt-4">
+                        <input
+                          type="text"
+                          value={editTopic}
+                          onChange={(e) => setEditTopic(e.target.value)}
+                          className="w-full p-3 bg-black/30 border border-white/40 rounded-xl
+                                   text-white placeholder-white/60 text-sm font-medium
+                                   focus:ring-2 focus:ring-white/70 focus:border-transparent
+                                   transition-all duration-200"
+                          placeholder="Masukkan MQTT topic"
+                        />
+                      </div>
+                    )}
                   </div>
-
-                
+                </div>
               ))}
             </div>
           </div>
@@ -414,25 +541,31 @@ export default function HydroponicDashboard() {
               <div className="h-8 w-1 bg-gradient-to-b from-green-400 to-green-600 rounded-full"></div>
               <h2 className="text-2xl font-bold text-green-700">Riwayat Sensor</h2>
             </div>
+            
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-green-500/20">
-                    <th className="p-3 text-left text-green-700">Waktu</th>
-                    <th className="p-3 text-left text-green-700">Suhu</th>
-                    <th className="p-3 text-left text-green-700">Kelembaban</th>
+                  <tr className="border-b-2 border-green-500/30">
+                    <th className="py-4 px-6 text-left text-green-700 font-semibold">Waktu</th>
+                    <th className="py-4 px-6 text-left text-green-700 font-semibold">Suhu</th>
+                    <th className="py-4 px-6 text-left text-green-700 font-semibold">Kelembaban</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {sensorData.labels.map((time, index) => (
-                    <tr key={index} className="border-b border-green-500/10 
-                                             hover:bg-green-500/5 transition-colors">
-                      <td className="p-3 text-green-600">{time}</td>
-                      <td className="p-3 text-green-600">{sensorData.datasets[0].data[index]}°C</td>
-                      <td className="p-3 text-green-600">{sensorData.datasets[1].data[index]}%</td>
-                    </tr>
-                  ))}
-                </tbody>
+                <tbody>{sensorHistory.timestamps.map((time, index) => time && (
+                  <tr key={index} className="border-b border-green-500/10 hover:bg-green-500/5 transition-colors">
+                    <td className="py-4 px-6 text-green-600 font-medium">{time}</td>
+                    <td className="py-4 px-6 text-green-600">
+                      {sensorHistory.temperatures[index] !== null 
+                        ? `${sensorHistory.temperatures[index].toFixed(1)}°C`
+                        : '-'}
+                    </td>
+                    <td className="py-4 px-6 text-green-600">
+                      {sensorHistory.humidities[index] !== null
+                        ? `${sensorHistory.humidities[index].toFixed(1)}%`
+                        : '-'}
+                    </td>
+                  </tr>
+                ))}</tbody>
               </table>
             </div>
           </div>
