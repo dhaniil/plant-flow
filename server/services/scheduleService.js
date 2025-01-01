@@ -1,5 +1,5 @@
-
 import cron from 'node-cron';
+import mqttService from './mqttService.js';
 
 class ScheduleService {
     constructor(db) {
@@ -24,23 +24,50 @@ class ScheduleService {
             hour: '2-digit', 
             minute: '2-digit', 
             hour12: false 
-        });
+        }).replace('.', ':');
         const currentDay = this.getDayName(now.getDay());
 
-        try {
-            const jadwalCollection = this.db.collection('jadwals');
-            const schedules = await jadwalCollection.find({ 
-                status: 'active',
-                waktu: currentTime,
-                hari: currentDay
-            }).toArray();
+        console.log('\n=== Checking Schedules ===');
+        console.log('Current Time:', currentTime);
+        console.log('Current Day:', currentDay);
 
-            for (const schedule of schedules) {
-                await this.executeSchedule(schedule);
+        try {
+            const jadwalCollection = this.db.collection('jadwal');
+            const allSchedules = await jadwalCollection.find({ status: 'active' }).toArray();
+            
+            console.log(`Found ${allSchedules.length} active schedules`);
+            
+            if (allSchedules.length > 0) {
+                console.log('Active schedules:', JSON.stringify(allSchedules, null, 2));
+            }
+            
+            for (const schedule of allSchedules) {
+                const scheduleTime = schedule.waktu.replace('.', ':');
+                const timeMatch = scheduleTime === currentTime;
+                const dayMatch = schedule.hari.includes(currentDay);
+                
+                console.log(`\nSchedule: ${schedule.name}`);
+                console.log(`Schedule details:`, {
+                    configuredTime: scheduleTime,
+                    currentTime: currentTime,
+                    configuredDays: schedule.hari,
+                    currentDay: currentDay,
+                    status: schedule.status
+                });
+                console.log(`Time Match (${scheduleTime} = ${currentTime}):`, timeMatch);
+                console.log(`Day Match (${schedule.hari.join(',')} includes ${currentDay}):`, dayMatch);
+                
+                if (timeMatch && dayMatch) {
+                    console.log('✓ Schedule matches! Executing...');
+                    await this.executeSchedule(schedule);
+                } else {
+                    console.log('✗ Schedule does not match current time/day');
+                }
             }
         } catch (error) {
             console.error('Error checking schedules:', error);
         }
+        console.log('\n=== End Checking Schedules ===\n');
     }
 
     getDayName(dayIndex) {
@@ -50,14 +77,22 @@ class ScheduleService {
 
     async executeSchedule(schedule) {
         try {
+            console.log(`\nExecuting schedule: ${schedule.name}`);
             const deviceCollection = this.db.collection('devices');
             
             for (const deviceId of schedule.devices) {
                 const device = await deviceCollection.findOne({ device_id: deviceId });
                 
                 if (device) {
-                    // Di sini Anda bisa menambahkan logika eksekusi alternatif
-                    await this.logScheduleExecution(schedule, device);
+                    console.log(`- Device found: ${device.name} (${device.mqtt_topic})`);
+                    const messagePayload = schedule.payload || (schedule.action === 'on' ? '1' : '0');
+                    console.log(`- Publishing message: ${messagePayload} to ${device.mqtt_topic}`);
+                    
+                    mqttService.publish(device.mqtt_topic, messagePayload);
+                    await this.logScheduleExecution(schedule, device, messagePayload);
+                    console.log('✓ Schedule executed successfully');
+                } else {
+                    console.log(`✗ Device not found: ${deviceId}`);
                 }
             }
         } catch (error) {
@@ -66,14 +101,16 @@ class ScheduleService {
         }
     }
 
-    async logScheduleExecution(schedule, device) {
+    async logScheduleExecution(schedule, device, payload) {
         try {
             const logsCollection = this.db.collection('schedule_logs');
             await logsCollection.insertOne({
                 schedule_id: schedule._id,
                 device_id: device.device_id,
                 device_name: device.name,
+                mqtt_topic: device.mqtt_topic,
                 action: schedule.action,
+                payload: payload,
                 executed_at: new Date(),
                 status: 'success'
             });

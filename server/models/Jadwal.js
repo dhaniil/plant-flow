@@ -6,6 +6,10 @@ const jadwalSchema = new mongoose.Schema({
     required: true,
     ref: 'Device' // Referensi ke model Device
   }],
+  jadwal_id: {
+    type: String,
+    required: true,
+  },
   name: { 
     type: String, 
     required: true 

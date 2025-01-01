@@ -10,6 +10,9 @@ import devicesRouter from './api/devices.js';
 import chartRouter from './api/chart.js';
 import jadwalRouter from './api/jadwal.js';
 import ScheduleService from './services/scheduleService.js';
+import mqttService from './services/mqttService.js';
+import mqttRouter from './api/mqtt.js';
+import logsRouter from './api/logs.js';
 
 dotenv.config();
 
@@ -43,6 +46,8 @@ app.use('/api/chart', chartRouter);
 app.use('/api/nutrient', nutrientRouter);
 app.use('/api/datasensor', datasensorRouter);
 app.use('/api/jadwal', jadwalRouter);
+app.use('/api/mqtt', mqttRouter);
+app.use('/api/logs', logsRouter);
 
 const startServer = async () => {
     try {
@@ -66,6 +71,7 @@ const startServer = async () => {
         process.exit(1);
     }
 };
+
 
 // Error Handler 404
 app.use((req, res) => {

@@ -33,9 +33,10 @@ const Device: React.FC = () => {
         }
     };
 
-    // Pindahkan useEffect ke luar
+    // Polling status setiap 5 detik
     useEffect(() => {
-        fetchDevices();
+        const interval = setInterval(fetchDevices, 5000);
+        return () => clearInterval(interval);
     }, []);
 
     // Update device details

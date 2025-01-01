@@ -357,40 +357,39 @@ export default function HydroponicDashboard() {
           {/* Sensor Data Chart */}
           <div className="bg-white/20 rounded-2xl p-4 sm:p-8 mb-8 
                         border border-white/30 shadow-lg animate-fade-in-slow">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center justify-between gap-4 mb-6">
               <div className="flex items-center space-x-3">
                 <div className="h-8 w-1 bg-gradient-to-b from-green-400 to-green-600 rounded-full"></div>
                 <h2 className="text-2xl font-bold text-green-700">Data Sensor</h2>
               </div>
               
               {isAdmin && (
-                <div className="w-full sm:w-auto">
+                <div className="relative flex items-center">
                   {isEditingTopic ? (
-                    <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="flex items-center">
                       <input
                         type="text"
                         value={sensorTopic}
                         onChange={(e) => setSensorTopic(e.target.value)}
-                        className="flex-1 px-3 py-2 rounded-lg bg-white/30 border border-green-500/30
-                                 text-green-700 placeholder-green-600/50 text-sm min-w-[200px]"
-                        placeholder="Masukkan topic MQTT"
+                        className="px-3 py-2  rounded-lg bg-white/30 border border-green-500/30
+                                 text-green-700 placeholder-green-600/50 text-sm"
+                        placeholder="Topic MQTT"
                       />
                       <button
                         onClick={() => updateSensorTopic(sensorTopic)}
-                        className="px-4 py-2 rounded-lg bg-green-500/20 hover:bg-green-500/30
-                                 transition-colors duration-200 flex items-center justify-center gap-2 whitespace-nowrap"
+                        className="ml-2 p-2 rounded-lg bg-green-500/20 hover:bg-green-500/30
+                                 transition-colors duration-200"
                       >
-                        <Save size={20} className="text-green-700" />
-                        <span className="text-green-700 text-sm">Simpan</span>
+                        <Save size={18} className="text-green-700" />
                       </button>
                     </div>
                   ) : (
                     <button
                       onClick={() => setIsEditingTopic(true)}
                       className="p-2 rounded-lg bg-green-500/20 hover:bg-green-500/30
-                               transition-colors duration-200 ml-auto"
+                               transition-colors duration-200"
                     >
-                      <Settings size={20} className="text-green-700" />
+                      <Settings size={18} className="text-green-700" />
                     </button>
                   )}
                 </div>
