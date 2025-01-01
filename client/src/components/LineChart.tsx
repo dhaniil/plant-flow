@@ -23,7 +23,7 @@ interface LineChartProps {
   onDelete: (id: string) => void;
 }
 
-const MQTT_BROKER_URL = 'wss://broker.hivemq.com:8884/mqtt';
+const MQTT_BROKER_URL = import.meta.env.VITE_MQTT_BROKER_URL;
 
 const LineChart: React.FC<LineChartProps> = ({ id, name, topic, onUpdate, onDelete }) => {
   const { isAdmin } = useAdmin();
@@ -118,26 +118,28 @@ const LineChart: React.FC<LineChartProps> = ({ id, name, topic, onUpdate, onDele
                 className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg
                   transition duration-200 ease-in-out shadow-lg hover:shadow-green-200"
               >
-                Save
+                Simpan
               </button>
               <button
                 onClick={() => setIsEditing(false)}
                 className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg
                   transition duration-200 ease-in-out shadow-lg hover:shadow-gray-200"
               >
-                Cancel
+                Batal
               </button>
             </div>
           ) : (
             <>
-              <div className="flex flex-row sm:flex-col sm:items-start items-center gap-3">
+              <div className="flex flex-row sm:flex-col sm:items-start lg:flex-row items-center lg:gap-4 gap-1">
                 <h3 className="text-xl font-bold text-green-800 tracking-tight">{chartName}</h3>
+                {isAdmin && (
                 <span className="px-4 py-1.5 bg-green-100 text-green-700 rounded-full text-sm
                   font-medium border border-green-200/50 shadow-sm">
                   {mqttTopic}
                 </span>
+                )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex ">
                 {isAdmin && (
                 <button 
                   onClick={() => setIsEditing(true)} 
@@ -170,38 +172,14 @@ const LineChart: React.FC<LineChartProps> = ({ id, name, topic, onUpdate, onDele
             data={{
               labels: labels,
               datasets: [
-                {
-                  label: chartName,
-                  data: data,
-                  borderColor: '#16a34a', // green-600
-                  backgroundColor: 'rgba(22, 163, 74, 0.1)',
-                  tension: 0.4,
-                  pointRadius: 4,
-                  pointBackgroundColor: '#16a34a',
-                  pointBorderColor: '#ffffff',
-                  pointBorderWidth: 2,
-                  fill: true,
-                },
+
               ],
             }}
             options={{
               responsive: true,
               maintainAspectRatio: false,
               plugins: {
-                legend: {
-                  position: 'top',
-                  align: 'end',
-                  labels: {
-                    usePointStyle: true,
-                    padding: 20,
-                    font: {
-                      size: 13,
-                      family: "'Inter', sans-serif",
-                      weight: 500
-                    },
-                    color: '#166534' // green-800
-                  }
-                },
+
                 tooltip: {
                   backgroundColor: 'rgba(0, 0, 0, 0.8)',
                   padding: 12,

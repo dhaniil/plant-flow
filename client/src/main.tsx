@@ -6,10 +6,10 @@ import HydroponicDashboard from './App';
 import Device from './pages/Devices';
 import Graphs from './pages/Graphs';
 import BottomNav from './components/BottomNav';
-import GrowthTimelapse from './pages/GrowthTimelapse';
 import Login from './pages/Login';
 import { AdminProvider } from '../context/AdminContext'; // Import AdminProvider
 import Header from './components/Header';
+import Jadwal from './pages/Jadwal';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -18,7 +18,7 @@ createRoot(document.getElementById('root')!).render(
       <Router>
         <Header />
         <Routes>
-          <Route path="/timelapse" element={<GrowthTimelapse />} />
+          <Route path="/schedule" element={<Jadwal />} />
           <Route path="/" element={<HydroponicDashboard />} />
           <Route path="/devices" element={<Device />} />
           <Route path="/graphs" element={<Graphs />} />

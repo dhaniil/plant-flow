@@ -28,7 +28,7 @@ const BottomNav = () => {
           <NavLink
             to="/login"
             className="p-2 bottom-nav flex flex-col items-center">
-            <i className="ri-leaf-line"></i>
+            <i className="ri-leaf-line text-2xl"></i>
           </NavLink>
         </div>
 
@@ -40,10 +40,10 @@ const BottomNav = () => {
           <i className="text-white ri-line-chart-line text-2xl"></i>
         </NavLink>
         <NavLink
-          to="/settings"
+          to="/schedule"
           className={({ isActive }) =>`p-2 bottom-nav flex flex-col items-center ${isActive ? "bottom-nav-active" : ""}`}
         >
-          <i className="text-white ri-settings-3-line text-2xl"></i>
+          <i className="text-white ri-calendar-line text-2xl"></i>
         </NavLink>
       </div>
     </div>

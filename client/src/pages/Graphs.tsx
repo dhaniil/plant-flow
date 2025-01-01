@@ -90,31 +90,29 @@ const Graphs: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50/50 to-teal-50">
-      {/* Header Section with Decorative Elements */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('/leaf-pattern.png')] opacity-5 h-auto"></div>
-        <div className="container mx-auto px-6 py-8 relative min-h-24 h-auto">
-          <div className="flex items-center justify-between mb-8">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100/70 py-4 sm:py-8">
+      <div className="container mx-auto px-3 sm:px-3">
+      {/* Header Section - Adjusted padding and margins */}
+      <div className="relative overflow-hidden mb-6 sm:mb-8">
+        <div className="relative">
+          <div className=" flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-green-800 tracking-tight mb-2">
-                IoT Monitoring Charts
-              </h1>
-
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-1 sm:mb-2">Grafik</h1>
+              <p className="text-sm sm:text-base text-gray-600">Monitor data sensor dalam bentuk grafik</p>
             </div>
-            {/* Optional: Add summary stats here */}
-            <div className="flex gap-4">
-              <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 shadow-sm border border-green-100">
-                <p className="text-sm text-green-600 mb-1">Active Sensors</p>
-                <p className="text-2xl font-semibold text-green-800">{charts.length}</p>
+            {/* Stats Card */}
+            <div className="flex gap-4 min-w-24">
+              <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 sm:p-4 shadow-sm border border-green-100 w-full sm:w-auto">
+                <p className="text-xs sm:text-sm text-green-600 mb-1 text-center">Grafik Aktif</p>
+                <p className="text-xl sm:text-2xl font-semibold text-green-800 text-center">{charts.length}</p>
               </div>
             </div>
           </div>
         </div>
       </div>
-  
-      {/* Charts Grid Section */}
-      <div className="container mx-auto px-6 py-6">
+
+      {/* Charts Grid Section - Adjusted top spacing */}
+      <div className="container mx-auto  pt-2">
         <div className="grid grid-cols-1 gap-6">
           {charts?.map((chart, index) => (
             <LineChart
@@ -137,6 +135,7 @@ const Graphs: React.FC = () => {
       {/* Decorative Elements */}
       <div className="fixed bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-green-300 via-emerald-300 to-teal-300"></div>
       <div className="fixed top-0 left-0 w-1 h-screen bg-gradient-to-b from-green-300 via-emerald-300 to-teal-300"></div>
+      </div>
     </div>
   );
 };

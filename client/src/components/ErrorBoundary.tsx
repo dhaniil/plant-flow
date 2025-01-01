@@ -2,11 +2,13 @@ import React from 'react';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
+  fallback?: React.ReactNode; // Optional custom fallback UI
 }
 
 interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
+  errorInfo: React.ErrorInfo | null;
 }
 
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
@@ -14,35 +16,47 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     super(props);
     this.state = {
       hasError: false,
-      error: null
+      error: null,
+      errorInfo: null
     };
   }
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    // Update state sehingga render berikutnya akan menampilkan fallback UI
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
     return {
       hasError: true,
       error
     };
   }
 
-  componentDidCatch(error: Error, info: React.ErrorInfo) {
-    // Anda bisa log error ke service error reporting di sini
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    // Update state dengan informasi error
+    this.setState({
+      errorInfo
+    });
+
+    // Log error ke service monitoring (jika ada)
     if (import.meta.env.DEV) {
       console.error('ErrorBoundary caught an error:', error);
-      console.error('Error Info:', info);
+      console.error('Error Info:', errorInfo);
     }
   }
 
   handleReset = () => {
     this.setState({
       hasError: false,
-      error: null
+      error: null,
+      errorInfo: null
     });
   };
 
   render() {
     if (this.state.hasError) {
+      // Gunakan custom fallback jika disediakan
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+
+      // Default fallback UI
       return (
         <div className="min-h-screen bg-green-100/70 font-Poppins flex items-center justify-center">
           <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-8 text-center max-w-md mx-auto">

@@ -13,7 +13,7 @@ const Header = () => {
     };
 
     return (
-        <header className="flex flex-row bg-green-300 p-1 w-auto h-auto animate-fade-in-fast sticky top-0 z-50 sm:h-10 sm:text-2xl lg:h-16 lg:text-4xl">
+        <header className="flex flex-row bg-green-300 p-1 w-auto h-auto animate-fade-in-fast sticky top-0 z-50 sm:h-14 sm:text-3xl lg:h-16 lg:text-4xl">
             <div className="container mx-auto py-4 px-4 flex justify-between items-center">
                 <h1 className="font-extrabold font-Sour">
                 <i className="ri-leaf-line ml-2 text-green-700"></i>
