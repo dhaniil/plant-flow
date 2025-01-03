@@ -68,4 +68,28 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+router.get("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const chartCollection = req.app.locals.getCollection('graphs');
+    const chart = await chartCollection.findOne({ _id: new ObjectId(id) });
+    
+    if (!chart) {
+      return res.status(404).json({ message: 'Chart tidak ditemukan' });
+    }
+
+    // Ambil data dari chartService memory
+    const chartService = req.app.locals.chartService;
+    const chartData = chartService.getChartData(id) || { data: [], labels: [] };
+
+    res.json({
+      data: chartData.data,
+      labels: chartData.labels
+    });
+  } catch (error) {
+    console.error('Error fetching chart data:', error);
+    res.status(500).json({ message: 'Gagal mengambil data chart' });
+  }
+});
+
 export default router; 

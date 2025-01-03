@@ -10,7 +10,7 @@
     {
       "id": "tds",
       "name": "TDS",
-      "topic": "hydro/sched/tds",
+      "topic": "hydro/sched/tds1",
       "color": "#3b82f6",
       "unit": "ppm"
     },

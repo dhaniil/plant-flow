@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import mqtt from 'mqtt';
+import React, { useState, useEffect } from 'react';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
-import { Menu, Bell, Droplet, Thermometer, Wind, TreesIcon as Plant, LogOut, Settings, Save } from 'lucide-react'; // Import LogOut icon
+import { Menu, Bell, Droplet, Thermometer, Wind, TreesIcon as Plant, LogOut, Settings, Save } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -27,8 +26,23 @@ interface NutrientData {
   unit: string;
 }
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-const MQTT_BROKER_URL = import.meta.env.VITE_MQTT_BROKER_URL;
+interface MQTTData {
+  temperature: number | null;
+  humidity: number | null;
+  timestamp: number | null;
+}
+
+interface NutrientValue {
+  ph: number | null;
+  tds: number | null;
+  ec: number | null;
+  nutrient: number | null;
+  timestamp: number | null;
+}
+
+
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 
 // Periksa apakah BACKEND_URL sudah benar
 console.log('Backend URL:', import.meta.env.VITE_BACKEND_URL); // Temporary debug
@@ -58,8 +72,8 @@ export default function HydroponicDashboard() {
   const { isAdmin, logout } = useAdmin();
   
   const [sensorValues, setSensorValues] = useState({
-    temperature: 0,
-    humidity: 0
+    temperature: null,
+    humidity: null
   });
 
   const [sensorHistory, setSensorHistory] = useState({
@@ -75,99 +89,43 @@ export default function HydroponicDashboard() {
   const [sensorTopic, setSensorTopic] = useState('');
   const [isEditingTopic, setIsEditingTopic] = useState(false);
 
+  const [mqttData, setMqttData] = useState<MQTTData>({
+    temperature: null,
+    humidity: null,
+    timestamp: null
+  });
+
+  const [nutrientValues, setNutrientValues] = useState<NutrientValue>({
+    ph: null,
+    tds: null,
+    ec: null,
+    nutrient: null,
+    timestamp: null
+  });
+
   // Definisikan sensorData di dalam komponen
   const sensorData = {
     labels: sensorHistory.timestamps,
     datasets: [
       {
         label: 'Suhu (°C)',
-        data: sensorHistory.temperatures,
+        data: sensorHistory.temperatures.map(temp => temp ?? null),
         borderColor: 'rgb(34, 197, 94)',
         backgroundColor: 'rgba(34, 197, 94, 0.5)',
+        spanGaps: true,
       },
       {
         label: 'Kelembaban (%)',
-        data: sensorHistory.humidities,
+        data: sensorHistory.humidities.map(hum => hum ?? null),
         borderColor: 'rgb(134, 239, 172)',
         backgroundColor: 'rgba(134, 239, 172, 0.5)',
+        spanGaps: true,
       },
     ],
   };
 
-  const mqttClientRef = useRef<mqtt.MqttClient | null>(null);
-  const mountedRef = useRef(false);
 
-  useEffect(() => {
-    if (mountedRef.current) return;
-    mountedRef.current = true;
-
-    if (mqttClientRef.current) {
-      mqttClientRef.current.end(true);
-      mqttClientRef.current = null;
-    }
-
-    if (sensorTopic) {
-      mqttClientRef.current = mqtt.connect(MQTT_BROKER_URL);
-      
-      mqttClientRef.current.on('connect', () => {
-        mqttClientRef.current?.subscribe(sensorTopic);
-      });
-
-      mqttClientRef.current.on('error', (err) => {
-        if (import.meta.env.DEV) {
-          console.error('MQTT connection error:', err);
-        }
-      });
-
-      mqttClientRef.current.on('message', (topic, message) => {
-        if (!mountedRef.current) return;
-        
-        if (topic === sensorTopic) {
-          const messageStr = message.toString();
-          
-          const humidityMatch = messageStr.match(/Kelembaban:\s*(\d+\.?\d*)/);
-          const temperatureMatch = messageStr.match(/Suhu:\s*(\d+\.?\d*)/);
-          
-          if (humidityMatch && temperatureMatch) {
-            const humidity = parseFloat(humidityMatch[1]);
-            const temperature = parseFloat(temperatureMatch[1]);
-            
-            if (!isNaN(temperature) && !isNaN(humidity)) {
-              setSensorValues(prev => {
-                if (prev.temperature === temperature && prev.humidity === humidity) {
-                  return prev;
-                }
-                return {
-                  temperature: temperature,
-                  humidity: humidity
-                };
-              });
-
-              const currentTime = new Date().toLocaleTimeString('id-ID', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              });
-
-              setSensorHistory(prev => ({
-                temperatures: [...prev.temperatures.slice(1), temperature],
-                humidities: [...prev.humidities.slice(1), humidity],
-                timestamps: [...prev.timestamps.slice(1), currentTime]
-              }));
-            }
-          }
-        }
-      });
-    }
-
-    return () => {
-      mountedRef.current = false;
-      if (mqttClientRef.current) {
-        mqttClientRef.current.unsubscribe(sensorTopic);
-        mqttClientRef.current.end(true);
-        mqttClientRef.current = null;
-      }
-    };
-  }, [sensorTopic]);
+  
 
   const handleEdit = (id: string, topic: string) => {
     setEditMode(id);
@@ -182,6 +140,8 @@ export default function HydroponicDashboard() {
   const handleLogout = () => {
     logout();
   };
+
+
 
   // Tambahkan fungsi untuk mengambil dan update topic
   const fetchNutrientTopics = async () => {
@@ -253,20 +213,14 @@ export default function HydroponicDashboard() {
     fetchNutrientTopics();
   }, []);
 
-  // Tambahkan fungsi untuk mengambil topic
+  // Fungsi untuk mengambil topic sensor
   const fetchSensorTopic = async () => {
     try {
       if (!BACKEND_URL) {
         throw new Error('Backend URL not configured');
       }
 
-      const response = await fetch(`${BACKEND_URL}/api/datasensor/topic`, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
-
+      const response = await fetch(`${BACKEND_URL}/api/datasensor/topic`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -280,14 +234,12 @@ export default function HydroponicDashboard() {
     } catch (error) {
       if (import.meta.env.DEV) {
         console.error('Gagal mengambil topic:', error);
-        console.error('Backend URL:', BACKEND_URL);
       }
-      // Fallback ke default topic di production
       setSensorTopic('hydro/sched/env');
     }
   };
 
-  // Tambahkan fungsi untuk update topic
+  // Fungsi untuk update topic
   const updateSensorTopic = async (newTopic: string) => {
     try {
       const response = await fetch(`${BACKEND_URL}/api/datasensor/topic`, {
@@ -297,12 +249,16 @@ export default function HydroponicDashboard() {
         },
         body: JSON.stringify({ topic: newTopic }),
       });
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      const data = await response.json();
-      setSensorTopic(data.sensor.topic);
-      setIsEditingTopic(false);
+      
+      const data = await safeParseJSON(response);
+      if (data?.sensor?.topic) {
+        setSensorTopic(data.sensor.topic);
+        setIsEditingTopic(false);
+      }
     } catch (error) {
       if (import.meta.env.DEV) {
         console.error('Gagal mengupdate topic:', error);
@@ -312,6 +268,133 @@ export default function HydroponicDashboard() {
 
   useEffect(() => {
     fetchSensorTopic();
+  }, []);
+
+  // Polling data sensor dari backend
+  useEffect(() => {
+    console.log('🚀 Memulai koneksi SSE ke:', `${BACKEND_URL}/api/datasensor/stream`);
+    const eventSource = new EventSource(`${BACKEND_URL}/api/datasensor/stream`);
+    console.log('🔌 Menghubungkan ke SSE...');
+    
+    eventSource.onopen = () => {
+      console.log('🟢 Koneksi SSE terbuka');
+      console.log('📡 Status koneksi:', eventSource.readyState);
+    };
+    
+    eventSource.onmessage = (event) => {
+      try {
+        // Log raw data untuk debugging
+        console.log('📥 [SSE] Raw data received:', {
+          data: event.data,
+          type: typeof event.data
+        });
+        
+        // Validasi data mentah
+        if (!event.data) {
+          console.warn('⚠️ [SSE] Empty data received');
+          return;
+        }
+
+        let parsedData;
+        try {
+          parsedData = JSON.parse(event.data);
+        } catch (parseError) {
+          console.error('❌ [SSE] JSON Parse error:', parseError);
+          console.error('📄 [SSE] Invalid JSON data:', event.data);
+          return;
+        }
+
+        // Validasi struktur data
+        if (!parsedData || typeof parsedData !== 'object') {
+          console.warn('⚠️ [SSE] Invalid data structure:', parsedData);
+          return;
+        }
+
+        console.log('📊 [SSE] Successfully parsed data:', {
+          timestamp: new Date().toISOString(),
+          type: parsedData.type || 'sensor',
+          data: parsedData
+        });
+
+        // Handle sensor data dengan validasi
+        if (parsedData?.temperature !== undefined && parsedData?.humidity !== undefined) {
+          // Validasi tipe data
+          const temperature = Number(parsedData.temperature);
+          const humidity = Number(parsedData.humidity);
+
+          if (isNaN(temperature) || isNaN(humidity)) {
+            console.warn('⚠️ [SENSOR] Invalid number values:', { temperature, humidity });
+            return;
+          }
+
+          console.log('🌡️ [SENSOR] Updating values:', { temperature, humidity });
+          
+          setSensorValues({
+            temperature,
+            humidity
+          });
+
+          const currentTime = new Date().toLocaleTimeString('id-ID', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            second: '2-digit'
+          });
+
+          setSensorHistory(prev => ({
+            temperatures: [...prev.temperatures.slice(1), temperature],
+            humidities: [...prev.humidities.slice(1), humidity],
+            timestamps: [...prev.timestamps.slice(1), currentTime]
+          }));
+        }
+
+        // Handle nutrient data dengan validasi
+        if (parsedData.type === 'nutrient') {
+          if (!parsedData.id || parsedData.value === undefined) {
+            console.warn('⚠️ [NUTRIENT] Missing required fields:', parsedData);
+            return;
+          }
+
+          const value = Number(parsedData.value);
+          if (isNaN(value)) {
+            console.warn('⚠️ [NUTRIENT] Invalid value:', parsedData.value);
+            return;
+          }
+
+          console.log('🧪 [NUTRIENT] Updating value:', {
+            id: parsedData.id,
+            value: value,
+            timestamp: new Date(parsedData.timestamp).toLocaleString('id-ID')
+          });
+
+          setNutrients(prev => prev.map(nutrient => {
+            if (nutrient.id === parsedData.id) {
+              return {
+                ...nutrient,
+                value: value
+              };
+            }
+            return nutrient;
+          }));
+        }
+      } catch (error) {
+        console.error('❌ [SSE] General error:', error);
+        console.error('📄 [SSE] Raw data:', event.data);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('❌ Koneksi SSE error:', error);
+      // Coba reconnect setelah 5 detik
+      setTimeout(() => {
+        eventSource.close();
+        new EventSource(`${BACKEND_URL}/api/datasensor/stream`);
+      }, 5000);
+    };
+
+    return () => {
+      console.log('🔴 Menutup koneksi SSE');
+      eventSource.close();
+    };
   }, []);
 
   return (
@@ -325,13 +408,17 @@ export default function HydroponicDashboard() {
               { 
                 icon: Thermometer, 
                 title: "Suhu", 
-                value: `${sensorValues.temperature.toFixed(1)}°C`, 
+                value: sensorValues.temperature !== null 
+                  ? `${sensorValues.temperature.toFixed(1)}°C`
+                  : "-", 
                 color: "white" 
               },
               { 
-                icon: Droplet, 
+                icon: Droplet,  
                 title: "Kelembaban", 
-                value: `${sensorValues.humidity.toFixed(1)}%`, 
+                value: sensorValues.humidity !== null 
+                  ? `${sensorValues.humidity.toFixed(1)}%`
+                  : "-", 
                 color: "white" 
               },
             ].map((stat, idx) => (
@@ -398,51 +485,26 @@ export default function HydroponicDashboard() {
             
             <div className="h-[300px] sm:h-[400px]">
               <Line 
-                data={sensorData} 
-                options={{
-                  ...Option,
-                  maintainAspectRatio: false,
-                  responsive: true,
-                  plugins: {
-                    legend: {
-                      position: 'top' as const,
-                      labels: {
-                        color: '#15803d',
-                        font: {
-                          size: 12,
-                          family: "'Poppins', sans-serif"
-                        },
-                        padding: 10
-                      }
-                    }
-                  },
-                  scales: {
-                    x: {
-                      grid: {
-                        color: 'rgba(34, 197, 94, 0.1)'
-                      },
-                      ticks: {
-                        color: '#15803d',
-                        font: {
-                          size: 10,
-                          family: "'Poppins', sans-serif"
-                        }
-                      }
+                data={{
+                  labels: sensorHistory.timestamps,
+                  datasets: [
+                    {
+                      label: 'Suhu (°C)',
+                      data: sensorHistory.temperatures,
+                      borderColor: 'rgb(34, 197, 94)',
+                      backgroundColor: 'rgba(34, 197, 94, 0.5)',
+                      spanGaps: true,
                     },
-                    y: {
-                      grid: {
-                        color: 'rgba(34, 197, 94, 0.1)'
-                      },
-                      ticks: {
-                        color: '#15803d',
-                        font: {
-                          size: 10,
-                          family: "'Poppins', sans-serif"
-                        }
-                      }
-                    }
-                  }
+                    {
+                      label: 'Kelembaban (%)',
+                      data: sensorHistory.humidities,
+                      borderColor: 'rgb(134, 239, 172)',
+                      backgroundColor: 'rgba(134, 239, 172, 0.5)',
+                      spanGaps: true,
+                    },
+                  ],
                 }} 
+                options={Option}
               />
             </div>
           </div>

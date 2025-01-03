@@ -33,60 +33,39 @@ const LineChart: React.FC<LineChartProps> = ({ id, name, topic, onUpdate, onDele
   const [data, setData] = useState<number[]>([]);
   const [labels, setLabels] = useState<string[]>([]);
 
+  // Polling data dari backend setiap 1 detik
   useEffect(() => {
-    // Fetch initial data from the backend with the full URL including the endpoint
     const fetchData = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/chart`);
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/chart/${id}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch chart data');
+        }
         const result = await response.json();
-        // Assuming your API returns initial data for the chart, adjust if necessary
         if (result.data && result.labels) {
           setData(result.data);
           setLabels(result.labels);
         }
       } catch (error) {
-        console.error('Error fetching data from the backend:', error);
+        console.error('Error fetching chart data:', error);
       }
     };
 
-    fetchData();
+    const interval = setInterval(fetchData, 1000);
+    return () => clearInterval(interval);
+  }, [id]);
 
-    const client = mqtt.connect(MQTT_BROKER_URL);
-
-    client.on('connect', () => {
-      console.log(`Connected to MQTT broker, subscribing to topic: ${mqttTopic}`);
-      client.subscribe(mqttTopic);
-    });
-
-    client.on('message', (receivedTopic, message) => {
-      if (receivedTopic === mqttTopic) {
-        const value = parseFloat(message.toString());
-        const timestamp = new Date().toLocaleTimeString();
-
-        setData((prevData) =>
-          prevData.length >= 20 ? [...prevData.slice(1), value] : [...prevData, value]
-        );
-        setLabels((prevLabels) =>
-          prevLabels.length >= 20 ? [...prevLabels.slice(1), timestamp] : [...prevLabels, timestamp]
-        );
-      }
-    });
-
-    return () => {
-      client.unsubscribe(mqttTopic);
-      client.end();
-    };
-  }, [mqttTopic]);
-
-  const handleSave = () => {
-    console.log('Saving chart with ID:', id);
-    console.log('Updated data:', { name: chartName, topic: mqttTopic });
-    
-    onUpdate(id, {
-      name: chartName,
-      topic: mqttTopic
-    });
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      onUpdate(id, {
+        name: chartName,
+        topic: mqttTopic
+      });
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating chart:', error);
+      alert('Gagal mengupdate grafik. Silakan coba lagi.');
+    }
   };
 
   return (

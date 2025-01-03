@@ -96,8 +96,27 @@ const DeviceComponent: React.FC<DeviceProps> = memo(({ deviceId, device_id, name
         
         try {
             setIsLoading(action);
-            await publishMessage(action === 'on' ? '1' : '0');
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/mqtt/publish`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    topic: mqtt_topic,
+                    message: action === 'on' ? '1' : '0'
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to publish message');
+            }
+
+            // Tunggu sebentar untuk animasi
             await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (error) {
+            console.error('Error controlling device:', error);
+            alert('Gagal mengontrol perangkat. Silakan coba lagi.');
         } finally {
             setIsLoading(null);
         }
@@ -295,7 +314,7 @@ const DeviceComponent: React.FC<DeviceProps> = memo(({ deviceId, device_id, name
             </div>
 
             <div className="mt-4 -mx-4 sm:mx-0">
-                <div className="flex border-b overflow-x-auto scrollbar-hide">
+                <div className="flex border-b overflow-x-auto scrollbar-hide sm:overflow-x-visible">
                     {[
                         { id: 'control', icon: Power, label: 'Kontrol' },
                         { id: 'schedule', icon: Clock, label: 'Jadwal' },
@@ -304,7 +323,7 @@ const DeviceComponent: React.FC<DeviceProps> = memo(({ deviceId, device_id, name
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as TabType)}
-                            className={`flex items-center gap-2 px-4 py-2 border-b-2 ${
+                            className={`flex-none sm:flex-1 flex items-center gap-2 px-4 py-2 border-b-2 ${
                                 activeTab === tab.id 
                                     ? 'border-green-500 text-green-600' 
                                     : 'border-transparent text-gray-500'

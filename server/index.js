@@ -10,9 +10,11 @@ import devicesRouter from './api/devices.js';
 import chartRouter from './api/chart.js';
 import jadwalRouter from './api/jadwal.js';
 import ScheduleService from './services/scheduleService.js';
-import mqttService from './services/mqttService.js';
+import MqttService from './services/mqttService.js';
 import mqttRouter from './api/mqtt.js';
 import logsRouter from './api/logs.js';
+import ChartService from './services/chartService.js';
+import SensorService from './services/sensorService.js';
 
 dotenv.config();
 
@@ -27,7 +29,7 @@ const DB_NAME = process.env.DB_NAME;
 const corsOptions = {
     origin: [
         'https://plant-flow.vercel.app',
-        'http://localhost:4000'
+        'http://localhost:4000',  // Frontend port
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -49,25 +51,54 @@ app.use('/api/jadwal', jadwalRouter);
 app.use('/api/mqtt', mqttRouter);
 app.use('/api/logs', logsRouter);
 
+let mqttServiceInstance;
+
 const startServer = async () => {
     try {
-        // Gunakan MONGO_URI yang sudah dipastikan ada
         const client = await MongoClient.connect(MONGO_URI);
         console.log('Connected to MongoDB');
         
         const db = client.db(DB_NAME);
-        
-        // Initialize schedule service
-        const scheduleService = new ScheduleService(db);
-        
-        // Add collection getter to app.locals
         app.locals.getCollection = (name) => db.collection(name);
+        
+        // Inisialisasi MQTT Service dengan database
+        mqttServiceInstance = new MqttService(db);
+        
+        // Tunggu hingga MQTT terkoneksi
+        await new Promise((resolve) => {
+            mqttServiceInstance.client.once('connect', () => {
+                console.log('MQTT Client Connected');
+                resolve();
+            });
+        });
+
+        // Pasang mqttService ke app.locals
+        app.locals.mqttService = mqttServiceInstance;
+        
+        // Initialize schedule service setelah MQTT siap
+        const scheduleService = new ScheduleService(db, mqttServiceInstance);
+        
+        // Setelah inisialisasi mqttService
+        const chartService = new ChartService(db);
+        chartService.client = mqttServiceInstance.client; // Gunakan MQTT client yang sama
+        app.locals.chartService = chartService;
+        
+        // Setelah inisialisasi mqttService
+        const sensorService = new SensorService(db);
+        sensorService.client = mqttServiceInstance.client;
+        app.locals.sensorService = sensorService;
+        
+        // Tunggu sampai topics terload
+        await sensorService.loadTopics();
+        
+        // Subscribe ke topic sensor
+        mqttServiceInstance.client.subscribe('hydro/sched/env');
         
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
         });
     } catch (error) {
-        console.error('Failed to connect to MongoDB:', error);
+        console.error('Failed to start server:', error);
         process.exit(1);
     }
 };

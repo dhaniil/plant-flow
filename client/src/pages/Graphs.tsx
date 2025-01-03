@@ -1,10 +1,9 @@
 // Graphs.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import LineChart from '../components/LineChart';
 import AddChartButton from '../components/AddChartButton';
 import { useAdmin } from '../../context/AdminContext';
-
 
 interface ChartData {
   _id: string;
@@ -12,30 +11,94 @@ interface ChartData {
   topic: string;
 }
 
-// Baca URL backend dari .env
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+// Cache key untuk menyimpan data charts
+const CHARTS_CACHE_KEY = 'hydroponics_charts';
+const CACHE_DURATION = 5 * 60 * 1000; // 5 menit dalam milliseconds
 
 const Graphs: React.FC = () => {
   const { isAdmin } = useAdmin();
   const [charts, setCharts] = useState<ChartData[]>([]);
-  const [newChartName, setNewChartName] = useState('');
-  const [newChartTopic, setNewChartTopic] = useState('');
-  const [isAdding, setIsAdding] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Fetch Charts dari Database
-  useEffect(() => {
-    const fetchCharts = async () => {
-      try {
-        const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/chart`);
-        console.log('Response data:', response.data); // Debug: lihat data yang diterima
-        setCharts(response.data);
-      } catch (error) {
-        console.error('Error fetching charts:', error);
+  // Fungsi untuk mengambil data dari cache
+  const getFromCache = useCallback(() => {
+    const cached = localStorage.getItem(CHARTS_CACHE_KEY);
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < CACHE_DURATION) {
+        return data;
       }
-    };
-
-    fetchCharts();
+    }
+    return null;
   }, []);
+
+  // Fungsi untuk menyimpan data ke cache
+  const saveToCache = useCallback((data: ChartData[]) => {
+    localStorage.setItem(
+      CHARTS_CACHE_KEY,
+      JSON.stringify({
+        data,
+        timestamp: Date.now(),
+      })
+    );
+  }, []);
+
+  // MIMO: Batch update untuk multiple charts
+  const batchUpdateCharts = async (updates: { id: string; data: Partial<ChartData> }[]) => {
+    try {
+      const promises = updates.map(({ id, data }) =>
+        axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/chart/${id}`, data)
+      );
+      await Promise.all(promises);
+      
+      setCharts(prevCharts => 
+        prevCharts.map(chart => {
+          const update = updates.find(u => u.id === chart._id);
+          return update ? { ...chart, ...update.data } : chart;
+        })
+      );
+    } catch (error) {
+      console.error('Error in batch update:', error);
+      throw new Error('Gagal mengupdate multiple charts');
+    }
+  };
+
+  // Fetch data dengan caching
+  const fetchCharts = useCallback(async (forceFetch = false) => {
+    try {
+      setLoading(true);
+      
+      // Cek cache jika tidak force fetch
+      if (!forceFetch) {
+        const cachedData = getFromCache();
+        if (cachedData) {
+          setCharts(cachedData);
+          setLoading(false);
+          return;
+        }
+      }
+
+      const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/chart`);
+      setCharts(response.data);
+      saveToCache(response.data);
+    } catch (error) {
+      console.error('Error fetching charts:', error);
+      setError('Gagal mengambil data charts');
+    } finally {
+      setLoading(false);
+    }
+  }, [getFromCache, saveToCache]);
+
+  // Memoize charts untuk optimasi performa
+  const sortedCharts = useMemo(() => 
+    [...charts].sort((a, b) => a.name.localeCompare(b.name)),
+    [charts]
+  );
+
+  useEffect(() => {
+    fetchCharts();
+  }, [fetchCharts]);
 
   // Fungsi untuk Tambahkan Chart Baru
   const handleAddChart = (newChart: { _id: string; name: string; topic: string }) => {
