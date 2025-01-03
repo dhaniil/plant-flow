@@ -17,6 +17,7 @@ class SensorService {
     };
     this.subscribers = new Set();
     this.loadTopics();
+    this.lastProcessedMessage = 0;
   }
 
   // Tambah method untuk subscribe ke perubahan data
@@ -228,6 +229,32 @@ class SensorService {
 
   getNutrientValue(id) {
     return this.nutrientData?.[id] || null;
+  }
+
+  processSensorMessage(topic, message) {
+    const currentTime = Date.now();
+    
+    // Hanya proses pesan jika interval > 500ms dari pesan terakhir
+    if (currentTime - this.lastProcessedMessage > 500) {
+      try {
+        const data = JSON.parse(message);
+        
+        if (topic === 'hydro/sched/env' && data.temperature && data.humidity) {
+          this.sensorData = {
+            temperature: data.temperature,
+            humidity: data.humidity,
+            timestamp: new Date().toLocaleTimeString()
+          };
+          
+          // Emit event untuk SSE
+          this.emit('sensorUpdate', this.sensorData);
+          this.lastProcessedMessage = currentTime;
+        }
+        
+      } catch (error) {
+        console.error('Error processing sensor message:', error);
+      }
+    }
   }
 }
 

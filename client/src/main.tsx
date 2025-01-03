@@ -7,13 +7,13 @@ import Device from './pages/Devices';
 import Graphs from './pages/Graphs';
 import BottomNav from './components/BottomNav';
 import Login from './pages/Login';
-import { AdminProvider } from '../context/AdminContext'; // Import AdminProvider
+import { AdminProvider } from '../context/AdminContext';
 import Header from './components/Header';
 import Jadwal from './pages/Jadwal';
+import ErrorPage from './pages/ErrorPage';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {/* Wrap the Router with AdminProvider */}
     <AdminProvider>
       <Router>
         <Header />

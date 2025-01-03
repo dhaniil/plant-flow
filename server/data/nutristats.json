@@ -3,14 +3,14 @@
     {
       "id": "ph",
       "name": "pH Level",
-      "topic": "hydro/sched/ph",
+      "topic": "hydro/sched/ph2",
       "color": "#22c55e",
       "unit": "ph"
     },
     {
       "id": "tds",
       "name": "TDS",
-      "topic": "hydro/sched/tds1",
+      "topic": "hydro/sched/tds",
       "color": "#3b82f6",
       "unit": "ppm"
     },
