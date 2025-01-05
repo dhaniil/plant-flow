@@ -61,7 +61,6 @@ class ChartService {
             if (err) {
               console.error(`Failed to subscribe to ${chart.topic}:`, err);
             } else {
-              console.log(`Subscribed to chart topic: ${chart.topic}`);
             }
           });
         }

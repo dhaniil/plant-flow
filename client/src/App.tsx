@@ -151,14 +151,41 @@ function App() {
     fetchNutrientTopics();
   }, []);
 
+  // Fungsi untuk mengedit topik
+  const onEditTopic = async (topic: string) => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/nutrient/topic/${sensorTopic}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ topic }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update topic');
+      }
+
+      setSensorTopic(topic); // Update state topik
+    } catch (error) {
+      console.error('Error updating topic:', error);
+      alert('Gagal memperbarui topik sensor');
+    }
+  };
+
+  // Fetch topik sensor saat komponen dimuat
+
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100">
         <main className="container mx-auto px-4 py-8 space-y-8">
           <SensorStats sensorValues={sensorValues} />
-          <SensorChart sensorHistory={sensorHistory} sensorTopic={''} onEditTopic={function (topic: string): void {
-            throw new Error('Function not implemented.');
-          } } />
+          <SensorChart 
+            sensorHistory={sensorHistory} 
+            sensorTopic={sensorTopic} 
+            onEditTopic={onEditTopic} 
+          />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <NutrientStats 
               nutrients={nutrients}

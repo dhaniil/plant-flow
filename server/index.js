@@ -15,11 +15,42 @@ import mqttRouter from './api/mqtt.js';
 import logsRouter from './api/logs.js';
 import ChartService from './services/chartService.js';
 import SensorService from './services/sensorService.js';
+import logger from './logger.js';
+import rateLimit from 'express-rate-limit';
+import authenticate from './middleware/authMiddleware.js';
+
+
 
 dotenv.config();
 
+        
+
 const app = express();
 const PORT = process.env.PORT;
+
+// Rate limiting middleware
+// const limiter = rateLimit({
+//     windowMs: 15 * 60 * 1000, // 15 menit
+//     max: 100 // limit setiap IP ke 100 request per windowMs
+// });
+
+// app.use(limiter); // Apply rate limiting to all requests
+
+// Middleware untuk menangani error
+app.use((err, req, res, next) => {
+    logger.error('Application error', {
+        error: err.message,
+        stack: err.stack,
+        path: req.path,
+        method: req.method
+    });
+    
+    res.status(500).json({
+        error: process.env.NODE_ENV === 'production' 
+            ? 'Internal server error' 
+            : err.message
+    });
+});
 
 // Pastikan MONGO_URI ada
 const MONGO_URI = process.env.MONGO_URI;
@@ -51,6 +82,7 @@ app.use('/api/jadwal', jadwalRouter);
 app.use('/api/mqtt', mqttRouter);
 app.use('/api/logs', logsRouter);
 
+
 let mqttServiceInstance;
 
 const startServer = async () => {
@@ -65,25 +97,31 @@ const startServer = async () => {
         mqttServiceInstance = new MqttService(db);
         
         // Tunggu hingga MQTT terkoneksi
-        await new Promise((resolve) => {
+        await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error('MQTT connection timeout'));
+            }, 5000);
+
             mqttServiceInstance.client.once('connect', () => {
+                clearTimeout(timeout);
                 console.log('MQTT Client Connected');
                 resolve();
             });
         });
 
-        // Pasang mqttService ke app.locals
+        // Pasang services ke app.locals
         app.locals.mqttService = mqttServiceInstance;
+        app.locals.db = db; // Tambahkan db ke app.locals
         
-        // Initialize schedule service setelah MQTT siap
-        const scheduleService = new ScheduleService(db, mqttServiceInstance);
+        // Initialize services setelah MQTT siap
+        const scheduleService = new ScheduleService(app.locals.db);
+        scheduleService.setMqttClient(mqttServiceInstance.client);
+        app.locals.scheduleService = scheduleService;
         
-        // Setelah inisialisasi mqttService
         const chartService = new ChartService(db);
-        chartService.client = mqttServiceInstance.client; // Gunakan MQTT client yang sama
+        chartService.client = mqttServiceInstance.client;
         app.locals.chartService = chartService;
         
-        // Setelah inisialisasi mqttService
         const sensorService = new SensorService(db);
         sensorService.client = mqttServiceInstance.client;
         app.locals.sensorService = sensorService;
@@ -91,12 +129,10 @@ const startServer = async () => {
         // Tunggu sampai topics terload
         await sensorService.loadTopics();
         
-        // Subscribe ke topic sensor
-        mqttServiceInstance.client.subscribe('hydro/sched/env');
-        
         app.listen(PORT, () => {
-            console.log(`Server is running on port ${PORT}`);
+            console.log(`Server running on port ${PORT}`);
         });
+
     } catch (error) {
         console.error('Failed to start server:', error);
         process.exit(1);
@@ -111,6 +147,22 @@ app.use((req, res) => {
         path: req.path,
         method: req.method 
     });
+});
+
+app.get('/health', async (req, res) => {
+    try {
+        const metrics = {
+            uptime: process.uptime(),
+            timestamp: Date.now(),
+            mqtt: req.app.locals.mqttService?.client?.connected || false,
+            mongodb: req.app.locals.db?.topology?.isConnected() || false
+        };
+        
+        res.json(metrics);
+    } catch (error) {
+        logger.error('Health check failed', { error });
+        res.status(500).json({ status: 'error' });
+    }
 });
 
 startServer();

@@ -69,12 +69,27 @@ const DeviceComponent: React.FC<DeviceProps> = memo(({ deviceId, device_id, name
     const [activityLogs, setActivityLogs] = useState<any[]>([]);
     const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
+    const handleDelete = async () => {
+        if (window.confirm('Apakah Anda yakin ingin menghapus perangkat ini?')) {
+            try {
+                // Call the onDelete prop with deviceId (_id)
+                await onDelete(deviceId); // Not device_id
+            } catch (error) {
+                console.error('Error deleting device:', error);
+                alert('Gagal menghapus perangkat. Silakan coba lagi.');
+            }
+        }
+    };
+
+
     const publishMessage = useCallback(async (payload: string) => {
         try {
+            const token = localStorage.getItem('adminToken');
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/mqtt/publish`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
                     topic: mqtt_topic,
@@ -96,10 +111,12 @@ const DeviceComponent: React.FC<DeviceProps> = memo(({ deviceId, device_id, name
         
         try {
             setIsLoading(action);
+            const token = localStorage.getItem('adminToken');
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/mqtt/publish`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
                     topic: mqtt_topic,
@@ -112,7 +129,6 @@ const DeviceComponent: React.FC<DeviceProps> = memo(({ deviceId, device_id, name
                 throw new Error(error.message || 'Failed to publish message');
             }
 
-            // Tunggu sebentar untuk animasi
             await new Promise(resolve => setTimeout(resolve, 500));
         } catch (error) {
             console.error('Error controlling device:', error);
@@ -127,7 +143,15 @@ const DeviceComponent: React.FC<DeviceProps> = memo(({ deviceId, device_id, name
             if (activeTab === "schedule") {
                 setIsLoadingSchedules(true);
                 try {
-                    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/jadwal/device/${device_id}`);
+                    const token = localStorage.getItem('adminToken');
+                    const response = await fetch(
+                        `${import.meta.env.VITE_BACKEND_URL}/api/jadwal/device/${device_id}`,
+                        {
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            }
+                        }
+                    );
                     if (!response.ok) throw new Error('Failed to fetch schedules');
                     const data = await response.json();
                     setSchedules(data);
@@ -148,8 +172,14 @@ const DeviceComponent: React.FC<DeviceProps> = memo(({ deviceId, device_id, name
         
         setIsLoadingLogs(true);
         try {
+            const token = localStorage.getItem('adminToken');
             const response = await fetch(
-                `${import.meta.env.VITE_BACKEND_URL}/api/logs/device/${device_id}`
+                `${import.meta.env.VITE_BACKEND_URL}/api/logs/device/${device_id}`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                }
             );
             if (!response.ok) throw new Error('Failed to fetch logs');
             const data = await response.json();
@@ -292,6 +322,38 @@ const DeviceComponent: React.FC<DeviceProps> = memo(({ deviceId, device_id, name
         </div>
     );
 
+    const handleSaveEdit = async () => {
+        try {
+            const token = localStorage.getItem('adminToken');
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/devices/${deviceId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    name: editedName,
+                    status: editedStatus,
+                    mqtt_topic: editedMqttTopic
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update device');
+            }
+
+            onUpdate(deviceId, {
+                name: editedName,
+                status: editedStatus,
+                mqtt_topic: editedMqttTopic
+            });
+            setEditing(false);
+        } catch (error) {
+            console.error('Error updating device:', error);
+            alert('Gagal mengupdate perangkat. Silakan coba lagi.');
+        }
+    };
+
     return (
         <div className="backdrop-blur-xl bg-white/40 p-4 sm:p-6 rounded-2xl shadow-lg overflow-hidden">
             <div className="flex justify-between items-start mb-4">
@@ -305,7 +367,7 @@ const DeviceComponent: React.FC<DeviceProps> = memo(({ deviceId, device_id, name
                             className="p-2 hover:bg-gray-100 rounded-full">
                             <Settings size={20} className="text-gray-600" />
                         </button>
-                        <button onClick={() => onDelete(deviceId)} 
+                        <button onClick={handleDelete} 
                             className="p-2 hover:bg-red-50 rounded-full">
                             <i className="ri-delete-bin-line text-xl text-red-500" />
                         </button>
@@ -342,7 +404,7 @@ const DeviceComponent: React.FC<DeviceProps> = memo(({ deviceId, device_id, name
 
             {editing && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
-                    <div className="absolute inset-0 bg-gray-900/50 " 
+                    <div className="absolute inset-0 bg-gray-900/50" 
                         onClick={() => setEditing(false)} />
                     <div className="relative z-50 w-full max-w-md p-6 bg-white rounded-2xl shadow-2xl">
                         <div className="space-y-4">
@@ -365,14 +427,7 @@ const DeviceComponent: React.FC<DeviceProps> = memo(({ deviceId, device_id, name
                                 placeholder="MQTT Topic"
                             />
                             <button 
-                                onClick={() => {
-                                    onUpdate(deviceId, {
-                                        name: editedName,
-                                        status: editedStatus,
-                                        mqtt_topic: editedMqttTopic
-                                    });
-                                    setEditing(false);
-                                }}
+                                onClick={handleSaveEdit}
                                 className="w-full bg-green-500 text-white p-2.5 rounded-lg hover:bg-green-600"
                             >
                                 Simpan

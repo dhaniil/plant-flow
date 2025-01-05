@@ -1,27 +1,61 @@
 import mqtt from 'mqtt';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 class MqttService {
     constructor(db) {
-        if (!db) {
-            throw new Error('Database connection is required');
-        }
         this.db = db;
         this.client = null;
         this.connect();
     }
 
+    async updateDeviceStatus(topic, message) {
+        try {
+            const deviceCollection = this.db.collection('devices');
+            const status = message === '1' || message.toLowerCase() === 'true' ? 'on' : 'off';
+            
+            console.log(`Updating device status for topic ${topic} to ${status}`);
+            
+            await deviceCollection.updateOne(
+                { mqtt_topic: topic },
+                { 
+                    $set: { 
+                        status: status,
+                        last_updated: new Date()
+                    } 
+                }
+            );
+        } catch (error) {
+            console.error('Error updating device status:', error);
+        }
+    }
+
     connect() {
         try {
-            this.client = mqtt.connect(process.env.MQTT_BROKER_URL, {
+            const brokerUrl = process.env.MQTT_BROKER_URL;
+            if (!brokerUrl) {
+                throw new Error('MQTT_BROKER_URL tidak ditemukan di environment variables');
+            }
+
+            console.log('Connecting to MQTT broker:', brokerUrl);
+            
+            const options = {
                 clientId: `plantflow_server_${Date.now()}`,
-                keepalive: 60,
                 clean: true,
+                connectTimeout: 60000, // Tambah timeout jadi 60 detik
                 reconnectPeriod: 5000,
-                connectTimeout: 30 * 1000,
-            });
+                keepalive: 60,
+                rejectUnauthorized: false,
+                protocol: 'wss',
+                protocolVersion: 4,
+                path: '/mqtt'
+            };
+
+            this.client = mqtt.connect(brokerUrl, options);
 
             this.client.on('connect', async () => {
-                console.log('MQTT Server Connected');
+                console.log('✓ MQTT Connected successfully to:', brokerUrl);
                 try {
                     await this.subscribeToAllDevices();
                 } catch (error) {
@@ -29,12 +63,46 @@ class MqttService {
                 }
             });
 
-            this.client.on('error', (error) => {
-                console.error('MQTT Error:', error);
+            this.client.on('error', (err) => {
+                console.error('✗ MQTT Error:', err.message);
+            });
+
+            this.client.on('close', () => {
+                console.log('! MQTT Connection closed, attempting to reconnect...');
+            });
+
+            this.client.on('reconnect', () => {
+                console.log('! MQTT Reconnecting to:', brokerUrl);
+            });
+
+            this.client.on('offline', () => {
+                console.log('! MQTT Client offline');
+            });
+
+            this.client.on('message', async (topic, message) => {
+                try {
+                    const messageStr = message.toString();
+                    console.log(`Received message on ${topic}:`, messageStr);
+                    
+                    const deviceCollection = this.db.collection('devices');
+                    await deviceCollection.updateOne(
+                        { mqtt_topic: topic },
+                        { 
+                            $set: { 
+                                status: messageStr === '1' ? 'on' : 'off',
+                                last_message: messageStr,
+                                last_updated: new Date()
+                            } 
+                        }
+                    );
+                } catch (error) {
+                    console.error('Error handling MQTT message:', error);
+                }
             });
 
         } catch (error) {
-            console.error('MQTT Connection Error:', error);
+            console.error('✗ MQTT Connection Error:', error.message);
+            throw error;
         }
     }
 
@@ -55,7 +123,7 @@ class MqttService {
                         if (err) {
                             console.error(`Failed to subscribe to ${device.mqtt_topic}:`, err);
                         } else {
-                            console.log(`Subscribed to topic: ${device.mqtt_topic}`);
+                            console.log(`✓ Subscribed to topic: ${device.mqtt_topic}`);
                         }
                     });
                 }
@@ -66,20 +134,20 @@ class MqttService {
         }
     }
 
-    publish(topic, message, options = { qos: 1, retain: true }) {
+    async publish(topic, message) {
         return new Promise((resolve, reject) => {
             if (!this.client?.connected) {
                 reject(new Error('MQTT Client not connected'));
                 return;
             }
-
-            this.client.publish(topic, String(message), options, (error) => {
+            
+            this.client.publish(topic, message.toString(), (error) => {
                 if (error) {
-                    console.error('MQTT Publish Error:', error);
+                    console.error(`Failed to publish to ${topic}:`, error);
                     reject(error);
                 } else {
-                    console.log(`Published to ${topic}:`, message);
-                    resolve();
+                    console.log(`Successfully published to ${topic}`);
+                    resolve(true);
                 }
             });
         });

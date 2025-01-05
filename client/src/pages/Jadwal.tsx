@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, Clock, Calendar } from "lucide-react";
 import { useAdmin } from "../../context/AdminContext";
 import JadwalErrorBoundary from '../components/JadwalErrorBoundary';
 
+
 interface Device {
     _id: string;
     device_id: string;
@@ -25,7 +26,7 @@ interface Jadwal {
 
 const Jadwal = () => {
     const { isAdmin } = useAdmin();
-    const [jadwals, setJadwals] = useState<Jadwal[]>([]);
+    const [jadwal, setJadwal] = useState<Jadwal[]>([]);
     const [devices, setDevices] = useState<Device[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingJadwal, setEditingJadwal] = useState<Jadwal | null>(null);
@@ -46,23 +47,70 @@ const Jadwal = () => {
 
     // Fetch data jadwal dan devices dengan error handling
     useEffect(() => {
-        fetchJadwals();
+        fetchJadwal();
         fetchDevices();
     }, []);
 
-    const fetchJadwals = async () => {
+    const fetchJadwal = async () => {
         try {
-            const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/jadwal`);
-            setJadwals(response.data || []); // Pastikan selalu array
-        } catch (error) {
-            console.error("Error fetching jadwals:", error);
-            setJadwals([]); // Set empty array jika error
+            console.log('Fetching jadwal...');
+            const token = localStorage.getItem('adminToken');
+            const baseUrl = import.meta.env.VITE_BACKEND_URL;
+            
+            if (!baseUrl) {
+                throw new Error('Backend URL tidak ditemukan di environment');
+            }
+            
+            if (!token) {
+                throw new Error('Token tidak ditemukan');
+            }
+
+            console.log('Attempting to fetch from:', `${baseUrl}/api/jadwal`);
+            
+            const response = await axios.get(`${baseUrl}/api/jadwal`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                timeout: 5000 // Tambahkan timeout
+            });
+
+            console.log('Response received:', response.data);
+
+            if (response.data.success) {
+                setJadwal(response.data.data || []);
+            } else {
+                throw new Error(response.data.message);
+            }
+        } catch (error: any) {
+            let errorMessage = 'Gagal mengambil data jadwal';
+            
+            if (error.code === 'ERR_NETWORK') {
+                errorMessage = 'Tidak dapat terhubung ke server. Pastikan server berjalan.';
+            } else if (error.response?.status === 401) {
+                errorMessage = 'Sesi telah berakhir. Silakan login kembali.';
+                // Redirect ke login jika perlu
+            }
+            
+            console.error('Error details:', {
+                message: error.message,
+                code: error.code,
+                response: error.response?.data,
+                status: error.response?.status
+            });
+            
+            alert(errorMessage);
+            setJadwal([]);
         }
     };
 
     const fetchDevices = async () => {
         try {
-            const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/devices`);
+            const token = localStorage.getItem('adminToken');
+            const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/devices`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             setDevices(response.data || []); // Pastikan selalu array
         } catch (error) {
             console.error("Error fetching devices:", error);
@@ -73,49 +121,83 @@ const Jadwal = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        // Validasi devices
-        if (!formData.devices.length) {
-            alert('Pilih minimal satu perangkat');
+        // Validasi form sebelum submit
+        if (!formData.name || !formData.waktu || formData.hari.length === 0 || selectedDevices.length === 0) {
+            alert('Semua field harus diisi');
             return;
         }
 
-        // Log data sebelum submit
-        console.log('Submitting data:', formData);
-
         try {
-            const dataToSubmit = {
+            const token = localStorage.getItem('adminToken');
+            const payload = {
                 ...formData,
-                devices: formData.devices.filter(id => id), // Filter out null/undefined
+                devices: selectedDevices.map(device => device.device_id),
                 status: 'active'
             };
 
+            let response;
+            
             if (editingJadwal) {
-                await axios.put(
-                    `${import.meta.env.VITE_BACKEND_URL}/api/jadwal/${editingJadwal._id}`, 
-                    dataToSubmit
+                // Update existing jadwal
+                response = await axios.put(
+                    `${import.meta.env.VITE_BACKEND_URL}/api/jadwal/${editingJadwal._id}`,
+                    payload,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
                 );
             } else {
-                await axios.post(
-                    `${import.meta.env.VITE_BACKEND_URL}/api/jadwal`, 
-                    dataToSubmit
+                // Create new jadwal
+                response = await axios.post(
+                    `${import.meta.env.VITE_BACKEND_URL}/api/jadwal`,
+                    payload,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
                 );
             }
-            await fetchJadwals();
-            setIsModalOpen(false);
-            resetForm();
-        } catch (error) {
-            console.error("Error saving jadwal:", error);
-            alert('Gagal menyimpan jadwal. Silakan coba lagi.');
+
+            if (response.data.success) {
+                setIsModalOpen(false);
+                setEditingJadwal(null);
+                resetForm();
+                await fetchJadwal();
+            } else {
+                throw new Error(response.data.message || 'Gagal menyimpan jadwal');
+            }
+        } catch (error: any) {
+            console.error('Error saving jadwal:', error.response || error);
+            alert(error.response?.data?.message || 'Gagal menyimpan jadwal');
         }
     };
 
     const handleDelete = async (id: string) => {
         if (window.confirm("Apakah Anda yakin ingin menghapus jadwal ini?")) {
             try {
-                await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/jadwal/${id}`);
-                fetchJadwals();
-            } catch (error) {
+                const token = localStorage.getItem('adminToken');
+                const response = await axios.delete(
+                    `${import.meta.env.VITE_BACKEND_URL}/api/jadwal/${id}`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    }
+                );
+                
+                if (response.data.success) {
+                    await fetchJadwal();
+                } else {
+                    throw new Error(response.data.message || 'Gagal menghapus jadwal');
+                }
+            } catch (error: any) {
                 console.error("Error deleting jadwal:", error);
+                alert(error.response?.data?.message || 'Gagal menghapus jadwal');
             }
         }
     };
@@ -155,15 +237,13 @@ const Jadwal = () => {
     const resetForm = () => {
         setFormData({
             devices: [],
-            name: "",
-            waktu: "",
+            name: '',
+            waktu: '',
             hari: [],
-            action: "on",
-            payload: "1"
+            action: 'on',
+            payload: '1'
         });
         setSelectedDevices([]);
-        setEditingJadwal(null);
-        setSearchQuery('');
     };
 
     const handleDayToggle = (day: string) => {
@@ -223,10 +303,10 @@ const Jadwal = () => {
     );
 
     // Render jadwal dengan safe checks
-    const renderJadwals = () => {
-        if (!Array.isArray(jadwals)) return null;
+    const renderJadwal = () => {
+        if (!Array.isArray(jadwal)) return null;
 
-        return jadwals.map((jadwal) => {
+        return jadwal.map((jadwal) => {
             if (!jadwal) return null;
 
             const deviceNames = (jadwal.devices || [])
@@ -304,7 +384,7 @@ const Jadwal = () => {
 
                 {/* Daftar Jadwal */}
                 <div className="grid gap-4">
-                    {renderJadwals()}
+                    {renderJadwal()}
                 </div>
 
                 {/* Modal Form */}

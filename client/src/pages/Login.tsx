@@ -27,6 +27,8 @@ const AdminLogin: React.FC = () => {
 
       if (data.success) {
         const token = data.token;
+        localStorage.setItem('adminToken', token); // Store the token in local storage
+        console.log(token);
         setAdmin(true, username, token); // Set status admin and token
         navigate("/"); // Navigate to the main page
       } else {

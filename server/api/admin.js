@@ -2,6 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
+import authenticate from '../middleware/authMiddleware.js';
 
 dotenv.config();
 
@@ -15,7 +16,6 @@ const ADMIN_CREDENTIALS = {
 
 router.post('/login', async (req, res) => {
     const { username, password } = req.body;
-    console.log(username, password);
 
     if (username === ADMIN_CREDENTIALS.username) {
         // Verifikasi password menggunakan bcrypt
@@ -24,7 +24,7 @@ router.post('/login', async (req, res) => {
         if (isValid) {
             const token = jwt.sign(
                 { username }, 
-                process.env.JWT_SECRET || 'secretkey',
+                process.env.JWT_SECRET,
                 { expiresIn: '1h' }
             );
             res.json({ success: true, message: 'Login berhasil', token });

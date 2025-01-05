@@ -11,6 +11,12 @@ import { AdminProvider } from '../context/AdminContext';
 import Header from './components/Header';
 import Jadwal from './pages/Jadwal';
 import ErrorPage from './pages/ErrorPage';
+import { cleanupConsole, cleanupStorage } from './utils/cleanupUtils';
+
+if (import.meta.env.PROD) {
+  cleanupConsole();
+  cleanupStorage();
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

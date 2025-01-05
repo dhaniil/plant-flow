@@ -1,5 +1,6 @@
 import express from 'express';
 import mqttService from '../services/mqttService.js';
+import authenticate from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -18,9 +19,6 @@ router.post("/publish", async (req, res) => {
         if (!mqttService || !mqttService.client?.connected) {
             throw new Error('MQTT Client not connected');
         }
-
-        // Log untuk debugging
-        console.log('Publishing:', { topic, message });
         
         // Publish message
         await mqttService.publish(topic, message);
@@ -48,6 +46,49 @@ router.post("/publish", async (req, res) => {
             message: error.message 
         });
     }
+});
+
+// GET route untuk mendapatkan data MQTT berdasarkan topic
+router.get("/data/:topic", authenticate, async (req, res) => {
+  const { topic } = req.params;
+  try {
+    const client = req.app.locals.mqttService.client;
+    if (!client || !client.connected) {
+      return res.status(500).json({ 
+        message: 'MQTT client tidak tersedia atau tidak terhubung',
+        value: null 
+      });
+    }
+
+    let messageReceived = false;
+    
+    const messageHandler = (receivedTopic, message) => {
+      if (receivedTopic === topic && !messageReceived) {
+        messageReceived = true;
+        client.removeListener('message', messageHandler);
+        client.unsubscribe(topic);
+        res.json({
+          value: message.toString(),
+          timestamp: new Date().toISOString()
+        });
+      }
+    };
+
+    client.subscribe(topic);
+    client.on('message', messageHandler);
+
+    setTimeout(() => {
+      if (!messageReceived) {
+        client.removeListener('message', messageHandler);
+        client.unsubscribe(topic);
+        res.json({ value: null, timestamp: new Date().toISOString() });
+      }
+    }, 2000);
+
+  } catch (error) {
+    console.error('Error getting MQTT data:', error);
+    res.status(500).json({ message: 'Gagal mendapatkan data MQTT', error: error.message });
+  }
 });
 
 export default router; 

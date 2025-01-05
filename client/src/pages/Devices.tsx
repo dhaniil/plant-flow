@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import DeviceComponent from "../components/DeviceComponent";
 import AddDeviceButton from "../components/AddDeviceButton";
 import { motion } from "framer-motion";
 import { useAdmin } from '../../context/AdminContext';
+import { useDataCache } from '../hooks/useDataCache';
 
+  
 
 interface Device {
     _id: string;
@@ -11,111 +13,147 @@ interface Device {
     name: string;
     status: string;
     mqtt_topic: string;
+    created_at?: Date;
+    updated_at?: Date;
 }
+
+const DEVICES_CACHE_KEY = 'hydroponics_devices';
 
 const Device: React.FC = () => {
     const [devices, setDevices] = useState<Device[]>([]);
     const { isAdmin } = useAdmin();
-    
+    const { getFromCache, saveToCache } = useDataCache();
 
-    // Fetch devices from the backend API
-    const fetchDevices = async () => {
+    // Memoized fetch function
+    const fetchDevices = useCallback(async () => {
         try {
-            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/devices`);
+            const cachedDevices = getFromCache(DEVICES_CACHE_KEY);
+            if (cachedDevices) {
+                setDevices(cachedDevices);
+                return;
+            }
+
+            const token = localStorage.getItem('adminToken');
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/devices`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
+            
             const data = await response.json();
             setDevices(data);
+            saveToCache(DEVICES_CACHE_KEY, data);
         } catch (error) {
             console.error("Gagal mengambil perangkat:", error);
-            throw new Error("Gagal memuat data perangkat. Silakan coba lagi.");
+            setDevices([]);
         }
-    };
+    }, [getFromCache, saveToCache]);
 
-    // Polling status setiap 5 detik
-    useEffect(() => {
-        const interval = setInterval(fetchDevices, 5000);
-        return () => clearInterval(interval);
-    }, []);
-
-    // Update device details
-    const handleUpdateDevice = async (deviceId: string, updatedData: { name: string; status: string; mqtt_topic: string }) => {
+    // Memoized update function
+    const handleUpdateDevice = useCallback(async (deviceId: string, updatedData: { name: string; status: string; mqtt_topic: string }) => {
         try {
+            const token = localStorage.getItem('adminToken');
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/devices/${deviceId}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
                 },
                 body: JSON.stringify(updatedData),
             });
-    
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-    
-            const updatedDevice = await response.json();
-    
-            // Perbarui state secara lokal
-            setDevices((prevDevices) =>
-                prevDevices.map((device) =>
+
+            setDevices(prevDevices => {
+                const newDevices = prevDevices.map(device =>
                     device._id === deviceId ? { ...device, ...updatedData } : device
-                )
-            );
+                );
+                saveToCache(DEVICES_CACHE_KEY, newDevices);
+                return newDevices;
+            });
         } catch (error) {
             console.error("Error mengupdate perangkat:", error);
             throw new Error("Gagal mengupdate perangkat. Silakan coba lagi.");
         }
-    };
-    
+    }, [saveToCache]);
 
-    // Delete device
-    const handleDeleteDevice = async (deviceId: string) => {
+    // Memoized delete function
+    const handleDeleteDevice = useCallback(async (deviceId: string) => {
         try {
+            const token = localStorage.getItem('adminToken');
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/devices/${deviceId}`, {
                 method: "DELETE",
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
             });
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            setDevices((prevDevices) => prevDevices.filter((device) => device._id !== deviceId));
+            setDevices(prevDevices => {
+                const newDevices = prevDevices.filter(device => device._id !== deviceId);
+                saveToCache(DEVICES_CACHE_KEY, newDevices);
+                return newDevices;
+            });
         } catch (error) {
             console.error("Error menghapus perangkat:", error);
             throw new Error("Gagal menghapus perangkat. Silakan coba lagi.");
         }
-    };
+    }, [saveToCache]);
 
-    // Add device handler
-    const handleAddDevice = async (device: { 
-        name: string; 
-        topic: string;
-        status: boolean
-    }) => {
+    // Memoized add device function
+    const handleAddDevice = useCallback(async (device: { device_id: string; name: string; mqtt_topic: string; status: string }) => {
         try {
-            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/devices`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    device_id: device.name.toLowerCase().replace(/\s+/g, '-'),
-                    name: device.name,
-                    mqtt_topic: device.topic,
-                    status: String(device.status)
-                }),
-            });
-
-            if (response.ok) {
-                await fetchDevices();
-            } else {
-                console.error("Gagal menambahkan perangkat");
-            }
-        } catch (error) {
-            console.error("Error menambahkan perangkat:", error);
+          const token = localStorage.getItem("adminToken");
+          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/devices`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(device),
+          });
+      
+          console.log("Submitting device:", device);
+      
+          if (response.status !== 201) {
+            // Jika respons bukan 201, lempar error dengan pesan dari backend
+            const errorData = await response.json();
+            console.error("Error response from server:", errorData);
+            throw new Error(errorData.message || "Gagal menambahkan perangkat");
+          }
+      
+          // Respons sukses, refresh daftar perangkat
+          const responseData = await response.json();
+          console.log("Device added successfully:", responseData);
+          await fetchDevices();
+        } catch (error: any) {
+          console.error("Error menambahkan perangkat:", error.message);
+          throw error;
         }
-    };
+      }, [fetchDevices]);      
+    
+
+    // Memoized sorted devices
+    const sortedDevices = useMemo(() => 
+        [...devices].sort((a, b) => a.name.localeCompare(b.name)),
+        [devices]
+    );
+
+    // Polling effect with cleanup
+    useEffect(() => {
+        fetchDevices();
+        const interval = setInterval(fetchDevices, 1000);
+        return () => clearInterval(interval);
+    }, [fetchDevices]);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100/70 py-4 sm:py-8">
@@ -142,7 +180,14 @@ const Device: React.FC = () => {
                 {/* Button Tambah Perangkat */}
                 {isAdmin && (
                     <div className="mb-6 sm:mb-8">
-                        <AddDeviceButton onAddDevice={handleAddDevice} />
+                        <AddDeviceButton 
+                            onAddDevice={(device) => handleAddDevice({
+                                device_id: device.device_id,
+                                name: device.name,
+                                mqtt_topic: device.mqtt_topic,
+                                status: 'off'  // Set default status
+                            })} 
+                        />
                     </div>
                 )}
 
@@ -153,22 +198,17 @@ const Device: React.FC = () => {
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.5 }}
                 >
-                    {devices.length === 0 ? (
+                    {sortedDevices.length === 0 ? (
                         <div className="col-span-full flex flex-col items-center justify-center p-6 sm:p-12 bg-white/60 rounded-xl sm:rounded-3xl border border-white/40">
-                            <img 
-                                src="/empty-devices.svg" 
-                                alt="No devices"    
-                                className="w-32 h-32 sm:w-48 sm:h-48 mb-4 opacity-50"
-                            />
                             <p className="text-sm sm:text-base text-gray-500 text-center">
                                 Belum ada perangkat yang ditambahkan.<br/>
                                 Klik tombol "Tambah Perangkat" untuk memulai.
                             </p>
                         </div>
                     ) : (
-                        devices.map((device, index) => (
+                        sortedDevices.map((device) => (
                             <DeviceComponent
-                                key={device._id || index}
+                                key={device._id}
                                 deviceId={device._id}
                                 device_id={device.device_id}
                                 name={device.name}
@@ -176,7 +216,6 @@ const Device: React.FC = () => {
                                 mqtt_topic={device.mqtt_topic}
                                 onUpdate={handleUpdateDevice}
                                 onDelete={handleDeleteDevice}
-
                             />
                         ))
                     )}
@@ -186,8 +225,4 @@ const Device: React.FC = () => {
     );
 };
 
-export default Device;
-function useAuth(): { user: any; } {
-    throw new Error("Function not implemented.");
-}
-
+export default React.memo(Device);

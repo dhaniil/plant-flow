@@ -42,9 +42,30 @@ const SensorChart: React.FC<SensorChartProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editTopic, setEditTopic] = useState(sensorTopic);
 
-  const handleSave = () => {
-    onEditTopic(editTopic);
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/datasensor/${sensorTopic}`, {
+            method: "PUT", 
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ topic: editTopic }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        onEditTopic(editTopic); // Update state di parent component
+        setIsEditing(false);
+        alert(result.message);
+    } catch (error) {
+        console.error("Error saving sensor topic:", error);
+        alert("Gagal menyimpan topic sensor. Silakan coba lagi.");
+    }
   };
 
   const options = {
@@ -153,7 +174,7 @@ const SensorChart: React.FC<SensorChartProps> = ({
                            placeholder-gray-500 focus:outline-none 
                            focus:ring-2 focus:ring-green-500
                            text-sm w-40"
-                  placeholder="Sensor Topic..."
+                  placeholder={sensorTopic}
                 />
                 <button 
                   onClick={handleSave}

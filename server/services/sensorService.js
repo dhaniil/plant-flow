@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { promises as fs } from 'fs';
+import SensorMetrics from './sensorMetrics.js'; // Import SensorMetrics
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -18,6 +19,7 @@ class SensorService {
     this.subscribers = new Set();
     this.loadTopics();
     this.lastProcessedMessage = 0;
+    this.metrics = new SensorMetrics(); // Initialize metrics
   }
 
   // Tambah method untuk subscribe ke perubahan data
@@ -62,6 +64,8 @@ class SensorService {
           console.error('❌ [MQTT] Error in subscriber callback:', error);
         }
       });
+
+      this.metrics.recordReading(this.sensorData); // Record reading
     } catch (error) {
       console.error('❌ [MQTT] Error in notifySubscribers:', error);
     }
@@ -89,13 +93,7 @@ class SensorService {
 
         // Subscribe nutrient topics
         if (nutrientTopics.nutrients && Array.isArray(nutrientTopics.nutrients)) {
-          console.log('🧪 [TOPIC] Found nutrient configs:', 
-            nutrientTopics.nutrients.map(n => ({
-              id: n.id,
-              name: n.name,
-              topic: n.topic
-            }))
-          );
+
 
           nutrientTopics.nutrients.forEach(nutrient => {
             if (nutrient.topic) {

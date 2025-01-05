@@ -13,9 +13,14 @@ const AddChartButton: React.FC<AddChartButtonProps> = ({ onAddChart }) => {
 
   const handleSubmit = async () => {
     try {
+      const token = localStorage.getItem('adminToken');
       const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/chart`, {
         name: chartName,
         topic: mqttTopic,
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (response.data.sensor) {

@@ -3,7 +3,12 @@ import axios from "axios";
 import { Plus, Clock } from "lucide-react";
 
 interface AddDeviceButtonProps {
-  onAddDevice: (device: { id: string; name: string; topic: string; status: boolean }) => void;
+  onAddDevice: (device: {
+    device_id: string;
+    name: string;
+    mqtt_topic: string;
+    status: string;
+  }) => void;
 }
 
 const AddDeviceButton: React.FC<AddDeviceButtonProps> = ({ onAddDevice }) => {
@@ -24,40 +29,57 @@ const AddDeviceButton: React.FC<AddDeviceButtonProps> = ({ onAddDevice }) => {
 
   const handleSubmit = async () => {
     try {
-      const newDevice = {
-        id: deviceId,
-        name: deviceName,
-        topic: mqttTopic,
-        status: status
-      };
-      
-      onAddDevice(newDevice);
-
-      // Tambahkan jadwal jika ada
-      const validSchedules = schedules.filter(schedule => 
-        schedule.waktu && schedule.hari.length > 0
-      );
-
-      if (validSchedules.length > 0) {
-        for (const schedule of validSchedules) {
-          await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/jadwal`, {
-            devices: [deviceId],
-            name: `${deviceName} - ${schedule.action === 'on' ? 'Nyala' : 'Mati'} - ${schedule.waktu}`,
-            waktu: schedule.waktu,
-            hari: schedule.hari,
-            action: schedule.action,
-            payload: schedule.action === 'on' ? '1' : '0'
-          });
+        const token = localStorage.getItem('adminToken');
+        if (!token) {
+            alert('Silakan login kembali');
+            window.location.href = '/login';
+            return;
         }
-      }
-      
-      resetForm();
-      setIsModalOpen(false);
+
+        // Normalize device_id
+        const normalizedDeviceId = deviceId.toLowerCase().trim().replace(/\s+/g, '-');
+
+        console.log('Submitting device:', {
+            original: deviceId,
+            normalized: normalizedDeviceId
+        });
+
+        const newDevice = {
+            device_id: normalizedDeviceId,
+            name: deviceName.trim(),
+            mqtt_topic: mqttTopic.trim(),
+            status: 'off'
+        };
+
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/devices`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(newDevice)
+        });
+
+        const data = await response.json();
+
+        console.log('Server response:', {
+            status: response.status,
+            data: data
+        });
+
+        if (!response.ok) {
+            throw new Error(data.message || `Error: ${response.status}`);
+        }
+
+        // Only call onAddDevice if device was successfully added
+        onAddDevice(data.device);
+        resetForm();
+        setIsModalOpen(false);
     } catch (error) {
-      console.error('Error saving device and schedules:', error);
-      alert('Gagal menyimpan perangkat dan jadwal');
+        console.error('Error saving device:', error);
+        alert(error instanceof Error ? error.message : 'Gagal menyimpan perangkat');
     }
-  };
+};
 
   const resetForm = () => {
     setDeviceId("");
@@ -156,7 +178,7 @@ const AddDeviceButton: React.FC<AddDeviceButtonProps> = ({ onAddDevice }) => {
                 </div>
               </div>
 
-              {/* Schedules */}
+              {/* Schedules
               <div className="border-t pt-4 mb-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold">Jadwal</h3>
@@ -229,7 +251,7 @@ const AddDeviceButton: React.FC<AddDeviceButtonProps> = ({ onAddDevice }) => {
                     </div>
                   </div>
                 ))}
-              </div>
+              </div> */}
 
               <div className="flex justify-end gap-4">
                 <button

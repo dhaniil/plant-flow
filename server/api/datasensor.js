@@ -19,7 +19,6 @@ router.get('/current', async (req, res) => {
     }
 
     const currentData = sensorService.getSensorData();
-    console.log('Current sensor data:', currentData);
 
     if (!currentData || !currentData.lastUpdate) {
       return res.status(404).json({ 
@@ -64,7 +63,7 @@ router.get('/topic', async (req, res) => {
 });
 
 // PUT - Update topic sensor
-router.put('/topic', async (req, res) => {
+router.put('/:topic', async (req, res) => {
   try {
     const { topic } = req.body;
     if (!topic) {
@@ -158,7 +157,6 @@ router.get('/stream', (req, res) => {
   req.on('close', () => {
     clearInterval(heartbeat);
     unsubscribe();
-    console.log('🔌 Klien terputus dari SSE');
   });
 
   // Handle timeout koneksi
@@ -166,7 +164,6 @@ router.get('/stream', (req, res) => {
     clearInterval(heartbeat);
     unsubscribe();
     res.end();
-    console.log('⏰ SSE timeout');
   });
 
   // Handle error koneksi
