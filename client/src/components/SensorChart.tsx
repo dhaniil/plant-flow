@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, Save, X } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -33,7 +33,7 @@ interface SensorChartProps {
   onEditTopic: (topic: string) => void;
 }
 
-const SensorChart: React.FC<SensorChartProps> = ({ 
+const SensorChart: React.FC<SensorChartProps> = ({
   sensorHistory,
   sensorTopic,
   onEditTopic
@@ -42,119 +42,66 @@ const SensorChart: React.FC<SensorChartProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editTopic, setEditTopic] = useState(sensorTopic);
 
+  // Update editTopic when sensorTopic changes
+  useEffect(() => {
+    setEditTopic(sensorTopic);
+  }, [sensorTopic]);
+
   const handleSave = async () => {
     try {
-        const token = localStorage.getItem('adminToken');
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/datasensor/${sensorTopic}`, {
-            method: "PUT", 
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify({ topic: editTopic }),
-        });
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/datasensor/topic`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ topic: editTopic })
+      });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to update topic');
+      }
 
-        const result = await response.json();
-        onEditTopic(editTopic); // Update state di parent component
-        setIsEditing(false);
-        alert(result.message);
+      onEditTopic(editTopic);
+      setIsEditing(false);
     } catch (error) {
-        console.error("Error saving sensor topic:", error);
-        alert("Gagal menyimpan topic sensor. Silakan coba lagi.");
+      console.error('Error saving topic:', error);
+      alert('Gagal menyimpan topic. Silakan coba lagi.');
     }
   };
 
   const options = {
     responsive: true,
-    interaction: {
-      mode: 'index' as const,
-      intersect: false,
-    },
     plugins: {
       legend: {
         position: 'top' as const,
-        labels: {
-          font: {
-            family: "'Inter', sans-serif",
-            size: 12
-          },
-          usePointStyle: true,
-          padding: 20,
-        }
       },
       title: {
-        display: false
+        display: true,
+        text: 'Temperature & Humidity',
       },
-      tooltip: {
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        titleColor: '#1f2937',
-        bodyColor: '#1f2937',
-        borderColor: '#e5e7eb',
-        borderWidth: 1,
-        padding: 12,
-        bodyFont: {
-          family: "'Inter', sans-serif"
-        },
-        titleFont: {
-          family: "'Inter', sans-serif"
-        }
-      }
     },
-    scales: {
-      y: {
-        beginAtZero: true,
-        grid: {
-          color: 'rgba(0, 0, 0, 0.05)',
-        },
-        ticks: {
-          font: {
-            family: "'Inter', sans-serif"
-          }
-        }
-      },
-      x: {
-        grid: {
-          display: false
-        },
-        ticks: {
-          font: {
-            family: "'Inter', sans-serif"
-          }
-        }
-      }
-    }
   };
 
   const data = {
     labels: sensorHistory.timestamps,
     datasets: [
       {
-        label: 'Suhu (°C)',
+        label: 'Temperature',
         data: sensorHistory.temperatures,
-        borderColor: 'rgb(34, 197, 94)',
-        backgroundColor: 'rgba(34, 197, 94, 0.5)',
-        borderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        tension: 0.3,
-        fill: true
+        borderColor: 'rgb(255, 99, 132)',
+        backgroundColor: 'rgba(255, 99, 132, 0.5)',
       },
       {
-        label: 'Kelembaban (%)',
+        label: 'Humidity',
         data: sensorHistory.humidities,
-        borderColor: 'rgb(134, 239, 172)',
-        backgroundColor: 'rgba(134, 239, 172, 0.5)',
-        borderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        tension: 0.3,
-        fill: true
-      }
-    ]
+        borderColor: 'rgb(53, 162, 235)',
+        backgroundColor: 'rgba(53, 162, 235, 0.5)',
+      },
+    ],
   };
 
   return (
@@ -174,7 +121,7 @@ const SensorChart: React.FC<SensorChartProps> = ({
                            placeholder-gray-500 focus:outline-none 
                            focus:ring-2 focus:ring-green-500
                            text-sm w-40"
-                  placeholder={sensorTopic}
+                  placeholder={sensorTopic} // Use current topic as placeholder
                 />
                 <button 
                   onClick={handleSave}
@@ -186,7 +133,7 @@ const SensorChart: React.FC<SensorChartProps> = ({
                 <button 
                   onClick={() => {
                     setIsEditing(false);
-                    setEditTopic(sensorTopic);
+                    setEditTopic(sensorTopic); // Reset to current topic
                   }}
                   className="p-1.5 bg-red-500 text-white rounded-lg 
                             hover:bg-red-600"

@@ -15,7 +15,6 @@ import { cleanupConsole, cleanupStorage } from './utils/cleanupUtils';
 
 if (import.meta.env.PROD) {
   cleanupConsole();
-  cleanupStorage();
 }
 
 createRoot(document.getElementById('root')!).render(

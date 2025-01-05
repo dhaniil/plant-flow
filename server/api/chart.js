@@ -4,7 +4,7 @@ import authenticate from '../middleware/authMiddleware.js';
 const router = express.Router();
 
 // GET route untuk mengambil semua chart
-router.get("/", authenticate, async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const chartCollection = req.app.locals.getCollection('graphs');
     const charts = await chartCollection.find({}).toArray();
@@ -152,7 +152,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // GET route untuk mendapatkan data MQTT berdasarkan topic
-router.get("/mqtt/data/:topic", authenticate, async (req, res) => {
+router.get("/mqtt/data/:topic",  async (req, res) => {
   const { topic } = req.params;
   try {
     const client = req.app.locals.mqttClient;

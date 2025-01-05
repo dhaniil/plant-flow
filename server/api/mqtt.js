@@ -49,7 +49,7 @@ router.post("/publish", async (req, res) => {
 });
 
 // GET route untuk mendapatkan data MQTT berdasarkan topic
-router.get("/data/:topic", authenticate, async (req, res) => {
+router.get("/data/:topic",  async (req, res) => {
   const { topic } = req.params;
   try {
     const client = req.app.locals.mqttService.client;

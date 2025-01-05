@@ -27,12 +27,7 @@ const Device: React.FC = () => {
     // Memoized fetch function
     const fetchDevices = useCallback(async () => {
         try {
-            const cachedDevices = getFromCache(DEVICES_CACHE_KEY);
-            if (cachedDevices) {
-                setDevices(cachedDevices);
-                return;
-            }
-
+            // Remove cache check temporarily to ensure fresh data
             const token = localStorage.getItem('adminToken');
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/devices`, {
                 headers: {
@@ -46,15 +41,16 @@ const Device: React.FC = () => {
             
             const data = await response.json();
             setDevices(data);
+            // Update cache with fresh data
             saveToCache(DEVICES_CACHE_KEY, data);
         } catch (error) {
             console.error("Gagal mengambil perangkat:", error);
             setDevices([]);
         }
-    }, [getFromCache, saveToCache]);
+    }, [saveToCache]);
 
     // Memoized update function
-    const handleUpdateDevice = useCallback(async (deviceId: string, updatedData: { name: string; status: string; mqtt_topic: string }) => {
+    const handleUpdateDevice = useCallback(async (deviceId: string, updatedData: { device_id: string; name: string; status: string; mqtt_topic: string }) => {
         try {
             const token = localStorage.getItem('adminToken');
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/devices/${deviceId}`, {
@@ -65,14 +61,20 @@ const Device: React.FC = () => {
                 },
                 body: JSON.stringify(updatedData),
             });
-
+    
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-
+    
             setDevices(prevDevices => {
                 const newDevices = prevDevices.map(device =>
-                    device._id === deviceId ? { ...device, ...updatedData } : device
+                    device._id === deviceId 
+                        ? { 
+                            ...device,
+                            ...updatedData,
+                            device_id: updatedData.device_id || device.device_id // Ensure device_id is preserved
+                          } 
+                        : device
                 );
                 saveToCache(DEVICES_CACHE_KEY, newDevices);
                 return newDevices;
@@ -112,34 +114,32 @@ const Device: React.FC = () => {
     // Memoized add device function
     const handleAddDevice = useCallback(async (device: { device_id: string; name: string; mqtt_topic: string; status: string }) => {
         try {
-          const token = localStorage.getItem("adminToken");
-          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/devices`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(device),
-          });
-      
-          console.log("Submitting device:", device);
-      
-          if (response.status !== 201) {
-            // Jika respons bukan 201, lempar error dengan pesan dari backend
-            const errorData = await response.json();
-            console.error("Error response from server:", errorData);
-            throw new Error(errorData.message || "Gagal menambahkan perangkat");
-          }
-      
-          // Respons sukses, refresh daftar perangkat
-          const responseData = await response.json();
-          console.log("Device added successfully:", responseData);
-          await fetchDevices();
+            const token = localStorage.getItem("adminToken");
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/devices`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(device),
+            });
+        
+            console.log("Submitting device:", device);
+        
+            if (response.status !== 201) {
+                const errorData = await response.json();
+                console.error("Error response from server:", errorData);
+                throw new Error(errorData.message || "Gagal menambahkan perangkat");
+            }
+        
+            // Clear cache and refresh data
+            localStorage.removeItem(DEVICES_CACHE_KEY);
+            await fetchDevices();
         } catch (error: any) {
-          console.error("Error menambahkan perangkat:", error.message);
-          throw error;
+            console.error("Error menambahkan perangkat:", error.message);
+            throw error;
         }
-      }, [fetchDevices]);      
+    }, [fetchDevices]);      
     
 
     // Memoized sorted devices
@@ -151,7 +151,7 @@ const Device: React.FC = () => {
     // Polling effect with cleanup
     useEffect(() => {
         fetchDevices();
-        const interval = setInterval(fetchDevices, 1000);
+        const interval = setInterval(fetchDevices, 5000);
         return () => clearInterval(interval);
     }, [fetchDevices]);
 
@@ -209,7 +209,7 @@ const Device: React.FC = () => {
                         sortedDevices.map((device) => (
                             <DeviceComponent
                                 key={device._id}
-                                deviceId={device._id}
+                                _id={device._id}
                                 device_id={device.device_id}
                                 name={device.name}
                                 status={device.status}

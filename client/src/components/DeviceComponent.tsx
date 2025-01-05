@@ -8,12 +8,17 @@ import { motion } from "framer-motion";
 
 
 interface DeviceProps {
-    deviceId: string;
-    device_id: string;
+    _id: string;
+    device_id: string; 
     name: string;
     status: string;
     mqtt_topic: string;
-    onUpdate: (id: string, updatedData: { name: string; status: string; mqtt_topic: string }) => void;
+    onUpdate: (id: string, updatedData: { 
+        name: string; 
+        status: string; 
+        mqtt_topic: string;
+        device_id: string;
+    }) => void;
     onDelete: (id: string) => void;
 }
 
@@ -54,7 +59,7 @@ const LoadingSpinner = () => (
     </svg>
 );
 
-const DeviceComponent: React.FC<DeviceProps> = memo(({ deviceId, device_id, name, status, mqtt_topic, onUpdate, onDelete }) => {
+const DeviceComponent: React.FC<DeviceProps> = memo(({ _id, device_id, name, status, mqtt_topic, onUpdate, onDelete }) => {
     const [editing, setEditing] = useState(false);
     const [editedName, setEditedName] = useState(name);
     const [editedStatus, setEditedStatus] = useState(status);
@@ -73,7 +78,7 @@ const DeviceComponent: React.FC<DeviceProps> = memo(({ deviceId, device_id, name
         if (window.confirm('Apakah Anda yakin ingin menghapus perangkat ini?')) {
             try {
                 // Call the onDelete prop with deviceId (_id)
-                await onDelete(deviceId); // Not device_id
+                await onDelete(_id); // Not device_id
             } catch (error) {
                 console.error('Error deleting device:', error);
                 alert('Gagal menghapus perangkat. Silakan coba lagi.');
@@ -325,24 +330,24 @@ const DeviceComponent: React.FC<DeviceProps> = memo(({ deviceId, device_id, name
     const handleSaveEdit = async () => {
         try {
             const token = localStorage.getItem('adminToken');
-            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/devices/${deviceId}`, {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/devices/${_id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
+                    device_id: device_id, // Add this line to preserve device_id
                     name: editedName,
                     status: editedStatus,
                     mqtt_topic: editedMqttTopic
                 })
             });
-
-            if (!response.ok) {
-                throw new Error('Failed to update device');
-            }
-
-            onUpdate(deviceId, {
+    
+            if (!response.ok) throw new Error('Failed to update device');
+    
+            onUpdate(_id, {
+                device_id: device_id, // Add this to update payload
                 name: editedName,
                 status: editedStatus,
                 mqtt_topic: editedMqttTopic

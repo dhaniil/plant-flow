@@ -15,9 +15,9 @@ import mqttRouter from './api/mqtt.js';
 import logsRouter from './api/logs.js';
 import ChartService from './services/chartService.js';
 import SensorService from './services/sensorService.js';
-import logger from './logger.js';
-import rateLimit from 'express-rate-limit';
-import authenticate from './middleware/authMiddleware.js';
+
+
+
 
 
 
@@ -58,10 +58,7 @@ const DB_NAME = process.env.DB_NAME;
 
 // Konfigurasi CORS
 const corsOptions = {
-    origin: [
-        'https://plant-flow.vercel.app',
-        'http://localhost:4000',  // Frontend port
-    ],
+    origin: ['https://plant-flow.vercel.app', 'http://localhost:4000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
@@ -69,8 +66,10 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(bodyParser.json());
+
 
 // Routes
 app.use('/api/admin', adminRoutes);
@@ -149,21 +148,6 @@ app.use((req, res) => {
     });
 });
 
-app.get('/health', async (req, res) => {
-    try {
-        const metrics = {
-            uptime: process.uptime(),
-            timestamp: Date.now(),
-            mqtt: req.app.locals.mqttService?.client?.connected || false,
-            mongodb: req.app.locals.db?.topology?.isConnected() || false
-        };
-        
-        res.json(metrics);
-    } catch (error) {
-        logger.error('Health check failed', { error });
-        res.status(500).json({ status: 'error' });
-    }
-});
 
 startServer();
 

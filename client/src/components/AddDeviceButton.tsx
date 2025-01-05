@@ -41,7 +41,9 @@ const AddDeviceButton: React.FC<AddDeviceButtonProps> = ({ onAddDevice }) => {
 
         console.log('Submitting device:', {
             original: deviceId,
-            normalized: normalizedDeviceId
+            normalized: normalizedDeviceId,
+            name: deviceName,
+            mqtt_topic: mqttTopic
         });
 
         const newDevice = {
@@ -68,7 +70,7 @@ const AddDeviceButton: React.FC<AddDeviceButtonProps> = ({ onAddDevice }) => {
         });
 
         if (!response.ok) {
-            throw new Error(data.message || `Error: ${response.status}`);
+            throw new Error(data.message);
         }
 
         // Only call onAddDevice if device was successfully added
@@ -78,6 +80,7 @@ const AddDeviceButton: React.FC<AddDeviceButtonProps> = ({ onAddDevice }) => {
     } catch (error) {
         console.error('Error saving device:', error);
         alert(error instanceof Error ? error.message : 'Gagal menyimpan perangkat');
+        return;
     }
 };
 

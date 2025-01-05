@@ -20,6 +20,12 @@ router.post("/", authenticate, async (req, res) => {
   try {
     const { device_id, name, mqtt_topic } = req.body;
 
+    console.log('Received device data:', {
+      device_id,
+      name,
+      mqtt_topic
+    });
+
     if (!device_id || !name || !mqtt_topic) {
       return res.status(400).json({
         message: "device_id, name, dan mqtt_topic diperlukan",
@@ -27,10 +33,22 @@ router.post("/", authenticate, async (req, res) => {
     }
 
     const devicesCollection = req.app.locals.getCollection("devices");
-    await devicesCollection.createIndex({ device_id: 1 }, { unique: true });
 
+    // Check existing device before insert
+    const existingDevice = await devicesCollection.findOne({ device_id });
+    console.log('Existing device check:', {
+      searchedId: device_id,
+      found: existingDevice ? true : false
+    });
 
-    // Coba tambahkan perangkat baru
+    if (existingDevice) {
+      return res.status(400).json({
+        message: "Device ID sudah digunakan",
+        attempted_id: device_id,
+        existing_id: existingDevice.device_id
+      });
+    }
+
     const newDevice = {
       device_id,
       name,
@@ -39,28 +57,19 @@ router.post("/", authenticate, async (req, res) => {
       created_at: new Date(),
     };
 
-    try {
-      const result = await devicesCollection.insertOne(newDevice);
-      console.log("Device berhasil ditambahkan:", newDevice);
+    const result = await devicesCollection.insertOne(newDevice);
+    console.log("Device berhasil ditambahkan:", {
+      _id: result.insertedId,
+      ...newDevice
+    });
 
-      return res.status(201).json({
-        message: "Device berhasil ditambahkan",
-        device: {
-          _id: result.insertedId,
-          ...newDevice,
-        },
-      });
-    } catch (dbError) {
-      // Tangkap error duplikasi dari MongoDB
-      if (dbError.code === 11000) {
-        console.error("Device ID sudah digunakan:", device_id);
-        return res.status(400).json({
-          message: "Device ID sudah digunakan",
-        });
-      }
-
-      throw dbError; // Lempar error lain ke catch berikutnya
-    }
+    return res.status(201).json({
+      message: "Device berhasil ditambahkan",
+      device: {
+        _id: result.insertedId,
+        ...newDevice,
+      },
+    });
   } catch (error) {
     console.error("Error menambahkan device:", error);
     return res.status(500).json({

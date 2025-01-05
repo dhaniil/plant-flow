@@ -62,30 +62,39 @@ router.get('/topic', async (req, res) => {
   }
 });
 
-// PUT - Update topic sensor
-router.put('/:topic', async (req, res) => {
+// PUT - Update sensor topic
+// PUT - Update sensor topic
+router.put('/topic', async (req, res) => {
   try {
     const { topic } = req.body;
+    
     if (!topic) {
-      return res.status(400).json({ error: 'Topic tidak boleh kosong' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'Topic tidak boleh kosong' 
+      });
     }
     
-    const data = await fs.readFile(dataPath, 'utf8');
-    const sensor = JSON.parse(data);
+    const sensorData = await fs.readFile(dataPath, 'utf8');
+    const sensor = JSON.parse(sensorData);
+    
+    // Update topic
     sensor.sensor.topic = topic;
     
+    // Save updated data
     await fs.writeFile(dataPath, JSON.stringify(sensor, null, 2));
 
-    // Update topic di sensorService
-    const sensorService = req.app.locals.sensorService;
-    if (sensorService) {
-      await sensorService.loadTopics();
-    }
-
-    res.json(sensor);
+    res.json({
+      success: true,
+      message: 'Topic berhasil diupdate',
+      sensor
+    });
   } catch (error) {
-    console.error('Error updating sensor topic:', error);
-    res.status(500).json({ error: 'Gagal mengupdate topic sensor' });
+    console.error('Error updating topic:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Gagal mengupdate topic'
+    });
   }
 });
 
